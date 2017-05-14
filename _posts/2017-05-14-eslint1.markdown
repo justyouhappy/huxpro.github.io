@@ -1,0 +1,91 @@
+---
+layout:     post
+title:      "esLint 使用总结（1）"
+subtitle:   "基于vs-code的使用"
+date:       2017-05-14
+author:     "Alan"
+header-img: "img/post-bg-rwd.jpg"
+catalog: true
+tags:
+    - 生活
+---
+
+> live like youself. 
+
+
+## 配置 ESLint:
+
+可以通过以下三种方式配置 ESLint:
+
+1.使用 .eslintrc 文件（支持 JSON 和 YAML 两种语法）；
+
+2.在 package.json 中添加 eslintConfig 配置块；
+
+3.直接在代码文件中定义。
+这里选用第一种以json的形式来编写
+使用eslint之前，我们要配置编译器的插件，让编译器配合我们的eslint的配置，进行飘红，当然也可以选用，
+
+eslint官方文档中，以命令行的形式来运行我们的eslint，进行检测代码规则
+
+---
+
+## vs code编译器配置
+
+打开vs code，在右边的工具栏中选择最后一个，扩展在输入栏中输入我们想安装的插件Eslint，选择第一个安装,如图：
+![eslint](/img/eslint.jpg)
+这样我们的插件就安装完了
+
+
+## Eslint 开始使用
+
+全局安装Eslint
+
+npm install -g eslint
+这样在我们的全局环境就有了eslint，注：mac全局安装时需开启root权限，在命令的前面加sudo
+初步使用
+
+安装结束之后我们先来用官方配置好的Eslint，来测试是否安装成功
+
+1.创建新的工程
+
+mkdir vsc-demo && cd vsc-demo
+2.新建文件
+touch app.js
+打开文件，写几行测试代码
+
+```
+var num = 1;
+constarray = []
+```
+
+这时我们的编译器，并没有飘红（vs code旧版会飘红，不支持es6语法），
+这时我们打开终端，初始化一下package.json(使用eslink的时候需要package.json)
+
+```
+npm init
+```
+
+这时我们再使用eslint来创建初始化规则
+
+```
+eslint —init
+```
+
+我们选择了标准的eslint规则
+
+![eslint](/img/eslintchose.png)
+
+重启vs code
+会提示我们两个错误，一个是在默认规则中，不用添加多余分号，另一个则是声明的变量必须使用，
+当我们改为这个
+
+```
+var num = 1
+constarray = []
+constarray.push(num)
+```
+错误就消失了，当然这只是一个测试，我们是否有成功安装eslint，真正使用时，我们可以自己编写配置文件，
+与这种方式相比较，自己编写的配置文件，显然更灵活，更舒适
+
+
+
