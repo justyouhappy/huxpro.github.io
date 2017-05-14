@@ -1,8 +1,8 @@
 ---
 layout:     post
-title:      "Hello Word"
+title:      "Hello World"
 subtitle:   " \"Hello World, Hello Blog\""
-date:       2017-05-14 12:00:00
+date:       2017-05-14
 author:     "Alan"
 header-img: "img/post-bg-2015.jpg"
 catalog: true
@@ -10,7 +10,7 @@ tags:
     - 生活
 ---
 
-> “live like youself. ”
+> live like youself. 
 
 
 ## 前言
@@ -43,13 +43,15 @@ tags:
 * Jekyll 的自定制非常容易，基本就是个模版引擎
 
 我第一次开始研究的时候，首先做的是买域名。。。。。。这可不是一个聪明的选择
-然后研究了一下如何将域名和GitHub Pages链接到域名上，还有如何在GitHub上配置一个GitHub Pages，我在这方面真的就是一个纯小白，幸运的是失败了几回后我遇见了这位前辈的教程[使用 GitHub, Jekyll 打造自己的免费独立博客](http://blog.csdn.net/on_1y/article/details/19259435)
+然后研究了一下如何将域名和GitHub Pages链接到域名上，还有如何在GitHub上配置一个GitHub Pages，我在这方面真的就是一个纯小白，幸运的是失败了几回后我遇见了这位前辈的教程
+
+[使用 GitHub, Jekyll 打造自己的免费独立博客](http://blog.csdn.net/on_1y/article/details/19259435)
 
 ---
 提示一下
 
 本地调试环境需要 `gem install jekyll` `gem install github-pages` `gem install bundler`
-其次呢，我并没有使用上面教程提供的方案来发布文章，我直接fork了黄玄前辈的博客[直通车](https://huangxuan.me/)
+其次呢，我并没有使用上面教程提供的方案来发布文章，我直接fork了黄玄前辈的博客 ===> [直通车](https://huangxuan.me/)
 以后每次发布文章按照黄玄前辈的方案即可~
 
 
