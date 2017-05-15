@@ -1,0 +1,241 @@
+---
+layout:     post
+title:      "SASS入门学习总结"
+subtitle:   "sass入门使用"
+date:       2017-05-15
+author:     "Alan"
+header-img: "img/post-bg-rwd.jpg"
+catalog: true
+tags:
+    - 前端
+    - 技术
+    - css
+---
+
+> live like youself. 
+
+SASS是一种css开发工具，SASS使用Ruby语言写的
+
+---
+
+# 基本用法
+
+---
+
+## 变量
+ 
+SASS允许使用变量，所有变量用$开头
+
+例如：
+
+``` 
+　　$blue : #1875e7;　
+
+　　div {
+　　　color : $blue;
+　　}
+```
+
+如果变量需要镶嵌到字符串之中，就必须写在#{}之中。
+
+例如
+
+```
+　　$side : left;
+
+　　.rounded {
+　　　　border-#{$side}-radius: 5px;
+　　}
+```
+---
+
+## 计算功能
+
+SASS是允许计算的
+
+```
+　　body {
+　　　　margin: (14px / 2);
+　　　　top: 50px + 100px;
+　　　　right: $var * 10%;
+　　}
+```
+
+要注意的是，在css里同样存在/的用法，在SASS运算时要注意什么时候/才会启到除法的作用，有三种情况：
+1. 如果数值或它的任意部分是存储在一个变量中或是函数的返回值。
+2. 如果数值被圆括号包围。
+3. 如果数值是另一个数学表达式的一部分。
+
+---
+
+## 嵌套
+
+SASS允许选择器嵌套
+如：
+
+```
+　　div {
+
+     width:100%
+　　　　h1 {
+　　　　　　color:red;
+　　　　}
+　　}
+
+编译成css是这样的
+
+   div {
+
+       width: 100%
+
+   }
+　　div h1 {
+　　　　color: red;
+　　}
+```
+---
+
+## 注释
+
+SASS共有两种注释风格。
+1.标准的CSS注释 /* comment */ ，会保留到编译后的文件。
+2.单行注释 // comment，只保留在SASS源文件中，编译后被省略。
+3.在/*后面加一个感叹号，表示这是"重要注释"。即使是压缩模式编译，也会保留这行注释，通常可以用于声明版权信息。
+
+---
+
+## 继承
+
+SASS允许一个选择器，继承另一个选择器。比如，现有class1：
+
+```
+　　.class1 {
+　　　　border: 1px solid #ddd;
+　　}
+```
+
+class2要继承class1，就要使用@extend命令：
+
+```
+　　.class2 {
+　　　　@extend .class1;
+　　　　font-size:120%;
+　　}
+```
+
+---
+
+## Mixin
+1.使用@Mixin命令，定义一个代码块。
+如：
+
+```
+　　@mixin left {
+　　　　float: left;
+　　　　margin-left: 10px;
+　　}
+```
+
+2.使用@include命令，调用这个mixin
+
+```
+　　div {
+　　　　@include left;
+　　}
+```
+
+3.mixin可以指定参数和值，和es6函数传递参数类似
+
+```
+　　@mixin left($value: 10px) {
+　　　　float: left;
+　　　　margin-right: $value;
+　　}
+```
+
+4.注：可以利用@import命令，来插入sass文件，相当于引入此sass文件的代码，如果插入的是CSS文件，则等同于CSS的import命令。
+
+---
+
+# 高级用法
+
+---
+
+## 条件语句
+
+1.@if可以用来判断，配套else属性：
+
+```
+　　p {
+　　　　@if 1 + 1 == 2 { border: 1px solid; }
+　　　　@if 5 < 3 { border: 2px dotted; }
+　　}
+
+
+　　@if lightness($color) > 30% {
+　　　　background-color: #000;
+　　} @else {
+　　　　background-color: #fff;
+　　}
+```
+
+---
+
+## 循环语句
+
+1.SASS支持for循环
+
+```
+　　@for $i from 1 to 10 {
+　　　　.border-#{$i} {
+　　　　　　border: #{$i}px solid blue;
+　　　　}
+　　}
+```
+
+2.支持while循环
+
+```
+　　$i: 6;
+
+　　@while $i > 0 {
+　　　　.item-#{$i} { width: 2em * $i; }
+　　　　$i: $i - 2;
+　　}
+```
+
+3.each命令与for类似的功能
+
+```
+　　@each $member in a, b, c, d {
+　　　　.#{$member} {
+　　　　　　background-image: url("/image/#{$member}.jpg");
+　　　　}
+　　}
+```
+
+---
+
+## 定义函数
+
+1.允许自定义函数
+
+```
+　　@function double($n) {
+　　　　@return $n * 2;
+　　}
+```
+2.使用函数
+
+```
+　　#sidebar {
+　　　　width: double(5px);
+　　}
+```
+
+
+
+
+
+
+
