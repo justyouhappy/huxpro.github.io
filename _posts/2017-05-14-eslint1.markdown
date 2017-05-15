@@ -48,34 +48,42 @@ npm install -g eslint
 
 1.创建新的工程
 
+```
 mkdir vsc-demo && cd vsc-demo
+```
+
 2.新建文件
+
+```
 touch app.js
-打开文件，写几行测试代码
+```
+
+3.打开文件，写几行测试代码
 
 ```
 var num = 1;
 constarray = []
 ```
 
-这时我们的编译器，并没有飘红（vs code旧版会飘红，不支持es6语法），
-这时我们打开终端，初始化一下package.json(使用eslink的时候需要package.json)
+这时我们的编译器，并没有飘红（vs code旧版会飘红，不支持es6语法）
+
+4.这时我们打开终端，初始化一下package.json(使用eslink的时候需要package.json)
 
 ```
 npm init
 ```
 
-这时我们再使用eslint来创建初始化规则
+5.这时我们再使用eslint来创建初始化规则
 
 ```
 eslint —init
 ```
 
-我们选择了标准的eslint规则
+6.我们选择了标准的eslint规则,如图
 
 ![eslint](/img/eslintchose.png)
 
-重启vs code
+7.重启vs code
 会提示我们两个错误，一个是在默认规则中，不用添加多余分号，另一个则是声明的变量必须使用，
 当我们改为这个
 
