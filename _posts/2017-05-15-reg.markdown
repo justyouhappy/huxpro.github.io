@@ -9,6 +9,7 @@ catalog: true
 tags:
     - 前端
     - 技术
+    - javascript
 ---
 
 > live like youself. 
