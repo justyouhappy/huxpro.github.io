@@ -1,0 +1,112 @@
+---
+layout:     post
+title:      "esLint 使用总结（2）"
+subtitle:   "基于vs-code的使用"
+date:       2017-05-15
+author:     "Alan"
+header-img: "img/post-bg-rwd.jpg"
+catalog: true
+tags:
+    - 前端
+    - 技术
+---
+
+> live like youself. 
+
+#开始自定义配置
+
+默认情况下，ESLint 支持 ECMAScript 5 语法
+那当我们想使用 ECMAScript 6 ，甚至更新的语法，而不至于编译器飘红，我们该怎么办呢？
+ESLint 允许你指定你想要支持的 JavaScript 语言选项
+在.eslintrc 文件使用 parserOptions 属性设置解析器选项
+.eslintrc文件里我选用的是json的形式来进行遍写
+属性设置如下
+ecmaVersion - 设置为 3， 5 (默认)， 6、7 或 8 指定你想要使用的 ECMAScript 版本。你也可以指定为 2015（同 6），2016（同 7），或 2017（同 8）使用年份命名
+sourceType -故名思意资源模块， 值为 "script" (默认) 或 "module"（如果你的代码是 ECMAScript 模块，也就是模块化开发的时候，使用module)。
+ecmaFeatures - 这是个对象，表示你想使用的额外的语言特性:
+* globalReturn -允许在全局作用域下使用 return 语句
+* impliedStrict - 启用全局 strict mode 严格模式 (如果 ecmaVersion 是 5 或更高)
+* jsx - 启用 JSX     
+我都配置如下
+
+```
+"parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module",
+    "ecmaFeatures": {
+        "jsx": true
+    }
+}
+````
+
+parser  -此属性为配置解析器，默认为Espree，可以不用设置（解释器（英语：Interpreter），又译为直译器，是一种电脑程序，能够把高级编程语言一行一行直接转译运行。解释器不会一次把整个程序转译出来，只像一位“中间人”，每次运行程序时都要先转成另一种语言再作运行，因此解释器的程序运行速度比较缓慢。它每转译一行程序叙述就立刻运行，然后再转译下一行，再运行，如此不停地进行下去。）
+ env，指定你想启用的环境，设置它们为 true
+可用的环境有：
+
+* browser - browser 全局变量。
+* node - Node.js 全局变量和 Node.js 作用域。
+* commonjs - CommonJS 全局变量和 CommonJS 作用域 (仅为使用 Browserify/WebPack 写的只支持浏览器的代码)。
+* shared-node-browser - Node 和 Browser 通用全局变量。
+* es6 - 支持除模块外所有 ECMAScript 6 特性（该选项会自动设置 ecmaVersion 解析器选项为 6）。
+* worker - web workers 全局变量。
+* amd - 定义 require() 和 define() 作为像 amd 一样的全局变量。
+* mocha - 添加所有的 Mocha 测试全局变量。
+* jasmine - 添加所有的 Jasmine 版本 1.3 和 2.0 的测试全局变量。
+* jest - Jest 全局变量。
+* phantomjs - PhantomJS 全局变量。
+* protractor - Protractor 全局变量。
+* qunit - QUnit 全局变量。
+* jquery - jQuery 全局变量。
+* prototypejs - Prototype.js 全局变量。
+* shelljs - ShellJS 全局变量。
+* meteor - Meteor 全局变量。
+* mongo - MongoDB 全局变量。
+* applescript - AppleScript 全局变量。
+* nashorn - Java 8 Nashorn 全局变量。
+* serviceworker - Service Worker 全局变量。
+* atomtest - Atom 测试全局变量。
+* embertest - Ember 测试全局变量。
+* webextensions - WebExtensions 全局变量。
+* greasemonkey - GreaseMonkey 全局变量。
+
+简单解释一下这个属性的意义 
+以browser为例，直译为浏览器，也就是浏览器环境，在浏览器中，会定义一些如window，location，history等对象，如果你在编写代码时使用,并且配置了未声明变量会飘红no-undef，eslint会默认识别这些变量是没有声明过得，导致你的编译器飘红，当我们在env属性中设置了此环境，eslint才会放过这些变量而不报错
+
+globals -指出你要使用的全局变量,与env变量不同，此配置里写的是你自定义的全局变量，可以忽略此配置
+
+plugins ，其中包含插件名字的列表。插件名称可以省略 eslint-plugin- 前缀。
+
+ESLint 支持使用第三方插件。在使用插件之前，你必须使用 npm 安装它。（若想使用react规范可以使用 react插件，想检测html里js错误要使用html插件）
+
+rules 连同错误级别和任何你想使用的选项在配置文件中进行规则配置
+
+ESLint 附带有大量的规则。你可以使用注释或配置文件修改你项目中要使用哪些规则。改变一个规则设置，你必须设置规则 ID 等于这些值之一：
+
+* "off" 或 0 - 关闭规则
+* "warn" 或 1 - 开启规则，使用警告级别的错误：warn (不会导致程序退出)
+* "error" 或 2 - 开启规则，使用错误级别的错误：error (当被触发的时候，程序会退出)
+
+在官方文档http://eslint.cn/docs/rules/中封装好了一些规则，直接找到你想要的配置就可以了
+ESLint 支持几种格式的配置文件：
+
+* JavaScript - 使用 .eslintrc.js 然后输出一个配置对象。
+* YAML - 使用 .eslintrc.yaml 或 .eslintrc.yml 去定义配置的结构。
+* JSON - 使用 .eslintrc.json 去定义配置的结构，ESLint 的 JSON 文件允许 JavaScript 风格的注释。
+* Deprecated - 使用 .eslintrc，可以使 JSON 也可以是 YAML。
+* package.json - 在 package.json 里创建一个 eslintConfig属性，在那里定义你的配置。
+如果同一个目录下有多个配置文件，ESLint 只会使用一个。优先级顺序如下：
+
+1. .eslintrc.js
+2. .eslintrc.yaml
+3. .eslintrc.yml
+4. .eslintrc.json
+5. .eslintrc
+6. package.json
+extends 引用已经配置好的规则，属性值可以是：
+
+* 在配置中指定的一个字符串
+* 字符串数组：每个配置继承它前面的配置
+extends值为 "eslint:recommended" 的 extends 属性启用一系列核心规则，这些规则报告一些常见问题，在 规则页面 中被标记为  。这个推荐的子集只能在 ESLint 主要版本进行更新。
+最后，你可以通过在项目根目录创建一个 .eslintignore 文件告诉 ESLint 去忽略特定的文件和目录。.eslintignore 文件是一个纯文本文件，其中的每一行都是一个 glob 模式表明哪些路径应该忽略检测。例如，以下将忽略所有的 JavaScript 文件：
+**/*.js
+现在你的配置文件就写完了，可以在项目里规范你的代码了！

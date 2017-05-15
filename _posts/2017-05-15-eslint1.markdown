@@ -2,7 +2,7 @@
 layout:     post
 title:      "esLint 使用总结（1）"
 subtitle:   "基于vs-code的使用"
-date:       2017-05-14
+date:       2017-05-15
 author:     "Alan"
 header-img: "img/post-bg-rwd.jpg"
 catalog: true
