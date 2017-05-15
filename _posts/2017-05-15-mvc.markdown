@@ -1,0 +1,52 @@
+---
+layout:     post
+title:      "基于React,Redux中mvc的理解"
+subtitle:   "react+redux中mvc的应用"
+date:       2017-05-15
+author:     "Alan"
+header-img: "img/post-bg-rwd.jpg"
+catalog: true
+tags:
+    - 前端
+    - 技术
+    - react
+    - redux
+---
+
+> live like youself. 
+
+## 首先解释一下什么是MVC。
+
+
+* model持有UI要展现的数据
+* View即UI的展现
+* Controller用于控制
+
+---
+
+## 在react+redux项目中的mvc
+
+1.React扮演的是View的角色
+2.Redux则是Controller
+3.至于Model就是Redux Store中存储的State。
+
+这就是我所理解的react+redux中MVC的开发模式。
+
+---
+
+## 我的看法
+
+简而言之，在React+Redux开发过程中，用户的交互，页面的加载都是视图view的变化，redux中的状态树store的state相当于一个管家，大多数时候是负责存储页面当前的状态，并负责管理，而redux中的action像是负责传递主人命令的仆人，带着主人（用户）的诸多命令(model)通知工作人员也就是reducer进行工作，而当reducer完成工作时，会产生一个新的状态，然后告知管家，当前更改的状态，然后管家store会将当前状态返回给主人（用户），也就是更新了主人（用户）的视图
+
+当我们需要改变view的时候有两个做法，一是通过直接操作UI元素，去动态的改变UI元素的逻辑，从而完成交互完成view的变化，另外一种则是，通过，改变model的形式，当view监测到model改变的时候，view会自动的发生变化，在react+redux这里，我们当然采用了后一种的方法，即view的变化其实应该通过Model的变化来传递！
+那么这种变化是怎么实现的呢，过于抽象的语言，想必让你不明所以吧，那就来通过一个小demo来说，首先我们构建好一个react+redux的项目环境（webpack配置，es6写法），里面写一个input标签，并将value值设置为从store树上的input组件的state的value值即（value = this.props.value）众所周知的事情就是当我们把input标签的value值写死了时候，我们再对input标签进行操作（删除，输入）都不会改变input显示的值，那么我们怎么改变input的view呢？很简单我们存储在store树上的value（即this.props.value）就是上面所说的model，那么我们改变此值就改变了model就会触发view的改变，又有些不说人话了，用人类能理解的话来说，input的value值取自stroe树上的value，当我们stroe树上的值改变，就会触发我们的react生成虚拟dom树，并与原来对比，发现有不一样的地方，我们最亲爱的react就会帮我们更改此部分视图，至于demo中如何修改stroe树上的value,建议你去看看阮一峰老师写的redux入门吧！最后说一句，当我们去用reducer和action去改变stroe树里的值就是我们所谓的controller了！到此我对react+redux中关于mvc的理解也就述说完毕了，才疏学浅，若文中有错误的地方欢迎来我的微博 @WaitAlan指点
+
+---
+
+## 文中所用demo
+
+```
+git clone git@github.com:justyouhappy/mvcdemo.git
+npm install //下载所需依赖
+npm run start //运行项目，端口为localhost:8080
+```
