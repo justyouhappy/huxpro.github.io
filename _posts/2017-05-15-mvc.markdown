@@ -46,7 +46,7 @@ tags:
 ## 文中所用demo
 
 ```
-git clone git@github.com:justyouhappy/mvcdemo.git
+git clone https://github.com/justyouhappy/mvcdemo.git
 npm install //下载所需依赖
 npm run start //运行项目，端口为localhost:8080
 ```
