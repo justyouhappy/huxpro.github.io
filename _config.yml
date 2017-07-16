@@ -44,13 +44,13 @@ kramdown:
 
 
 #Disqus settings
-disqus_username: 'disqus_Gy16nLDL19'
+disqus_username: disqus_Gy16nLDL19
 
 
 
 #Analytics settings
 Baidu Analytics 
-ba_track_id: '7250db8516fe02068142d177ac238b7f'
+ba_track_id: 7250db8516fe02068142d177ac238b7f
 
 #  Google Analytics
 # ga_track_id: 'UA-49627206-1'            # Format: UA-xxxxxx-xx
