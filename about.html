@@ -91,8 +91,6 @@ Life is short, live wonderful.</p></blockquote>
 </script>
 
 
-
-
 {% if site.disqus_username %}
 <!-- disqus 评论框 start -->
 <div class="comment">
@@ -108,11 +106,6 @@ Life is short, live wonderful.</p></blockquote>
     var disqus_shortname = "{{site.disqus_username}}";
     var disqus_identifier = "{{site.disqus_username}}/{{page.url}}";
     var disqus_url = "{{site.url}}{{page.url}}";
-    var disqus_config = function () {
-        this.page.url = "{{site.url}}{{page.url}}";
-        this.page.identifier = "{{site.disqus_username}}/{{page.url}}";
-        this.page.title = '<%= page.title %>';
-    };
     (function() {
         var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
         dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
