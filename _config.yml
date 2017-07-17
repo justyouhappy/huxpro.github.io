@@ -53,8 +53,8 @@ disqus_username: yuhuajian-alan
 ba_track_id: 7250db8516fe02068142d177ac238b7f
 
 #  Google Analytics
-# ga_track_id: 'UA-49627206-1'            # Format: UA-xxxxxx-xx
-# ga_domain: yuhuajian.com
+ga_track_id: 'UA-102592278-1' 
+ga_domain: yuhuajian.com
 
 
 
