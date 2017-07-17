@@ -1,0 +1,138 @@
+---
+layout:     post
+title:      "react生命周期"
+subtitle:   " \"react生命周期总结\""
+date:       2017-07-17
+author:     "Alan"
+header-img: "img/post-bg-2015.jpg"
+catalog: true
+tags:
+    - 前端
+    - 技术
+    - react
+---
+
+> live like youself. 
+
+
+## 前言
+react项目中生命周期是一个较为重要的概念，今天我们便来总结一下，生命周期的故事
+
+在react组件的开发过程中，我们有时会利用组件的不同状态，对组件进行操作，打个比方，类似人的一生，react组件从开始挂载到卸载也分为不同的周期，类比人的出生前，出生时，出生后，幼年，青年，老年的过程。
+先让我们用一张图片，来观察一下一个组件的一生吧
+
+![周期](/img/shengming.png)
+
+看完组件的一生的经历后，让我们来详细了解一下，这些阶段，我们都能对组件做一些什么样的操作吧
+
+---
+
+## 1.组件加载之前的生命周期
+
+* getDefaultProps 和 defaultProps
+* getInitialState 和 constructor,this.state
+* componentWilMount        
+
+### getDefaultProps || defaultProps
+
+getDefaultProps在es6参与react开发之前，我们还用createReactClass() 进行编程时，这个生命周期存在的意义是为我们的组件的存储在props里的属性提供默认值，当父组件或者redux并没有为props的属性提供值，就好取我们在getDefaultProps方法里返回的默认值
+例如：
+```
+var Greeting = createReactClass({ 
+    getDefaultProps: function() { 
+        return { name: 'Mary' }; 
+    }，
+     // … 
+});
+```
+而在es6时我们采用了类和继承的方式声明组件
+```
+例如：
+class Greeting extends React.Component { 
+    // …
+}
+```
+我们就用一个属性值来取代了此声明周期
+例如：
+```
+Greeting.defaultProps = { 
+    name: ‘Mary'
+};
+```
+### getInitialState || constructor,this.state
+
+这个生命周期是做什么的呢，顾名思义它的作用是声明默认的state值，在不进行setState操作state之前为state取一个默认值
+
+同getDefaultProps一样，在es6的react项目中，此生命周期就已经弃用，改为在类的constructor方法中声明this.state的值
+此生命周期的用法为
+```
+var Counter = createReactClass({ 
+    getInitialState: function() { 
+        return {count: this.props.initialCount}; 
+    }, 
+    // …
+});
+```
+Es6-react项目中我们采用类的constructor来达成此周期的目的，例如：
+```
+class Counter extends React.Component { 
+    constructor(props) { 
+        super(props);
+         this.state = {
+            count: props.initialCount
+        }; 
+    }
+     // …
+}
+```
+### componentWilMount
+在组件挂载之前执行此声明周期，在此声明周期中触发setState可以减少触发render生命周期,且只执行一次
+
+## 2.组件加载时的生命周期
+
+* render
+
+### render
+
+进行渲染组件的内容，组装生成这个组件的 HTML 结构（使用原生 HTML 标签或者子组件），也可以返回 null 或者 false，这时候 ReactDOM.findDOMNode(this) 会返回 null。
+
+这个方法很重要，它是核心函数。
+
+上面的其它函数都不是必须的，但是它是必须的。
+
+render里面不能修改state，否则会触发无限的重新渲染组件
+
+## 3.组件挂载结束的生命周期
+
+* componentDidMount
+
+### componentDidMount
+
+只会在装载完成之后调用一次，在 render 之后调用，从这里开始可以通过ReactDOM.findDOMNode(this) 获取到组件的 DOM 节点
+
+## 4.组件更新触发的生命周期（每次更新都会走一次）
+
+* componentWillReceiveProps  
+* shouldComponentUpdate 
+* componentWillUpdate
+* componentDidUpdate
+
+### componentWillReceiveProps
+组件是由父组件更新props而更新的，则在调用shouldComponentUpdate之前调用componentWillReceiveProps方法，可以在props传入后，渲染之前改变组件state的机会，在这里调用setState是不会二次渲染
+
+### shouldComponentUpdate 
+接受需要更新的props和state，让开发者执行条件判断，在需要时更新，不需要时不更新 componentWillUpdate
+更新过程中渲染之前，提供新的props和state，如果在这里直接调用setState，则又需要重新渲染，会陷入死循环。
+
+### componentWillUpdate
+和componentWilMount类似，此生命周期结束后触发render
+
+### componentDidUpdate
+更新过程中渲染之后，提供以前的props和state
+
+## 5.组件卸载时触发的生命周期
+
+* componentWillUnmount
+
+### componentWillUnmount
+此生命周期在组件卸载前执行，可以在此生命周期中进行：事件回收，清除定时器的操作
