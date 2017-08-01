@@ -1,0 +1,158 @@
+---
+layout:     post
+title:      "面试常问之深入了解bfc"
+subtitle:   "\"面试常问之深入了解bfc\""
+date:       2017-08-01
+author:     "Alan"
+header-img: "img/post-bg-alitrip.jpg"
+catalog: true
+tags:
+    - 前端
+    - css
+---
+
+> live like youself. 
+
+
+## 前言
+由于最近秋招开始，博主参加了好几个面试，其中感觉最为应该改进的地方是，我对一些知识不够深入了解，我们在学习的过程中往往停留在应用的方面，但对于一些有用的知识，了解原理往往能更让你无往而不利的应用它。
+
+好了，闲话少说，我们进入正题吧！
+
+bfc 全称block formatting context 翻译过来就是块级格式化上下文。
+
+而我们伟大的w3c是怎么解释它的呢？
+
+![w3c](/img/bfc.png)
+
+整段话翻译过来就是：
+
+浮动元素和绝对定位元素，非块级盒子的块级容器（例如 inline-blocks, table-cells, 和 table-captions），以及overflow值不为“visiable”的块级盒子，都会为他们的内容创建新的块级格式化上下文。
+
+在一个块级格式化上下文里，盒子从包含块的顶端开始垂直地一个接一个地排列，两个盒子之间的垂直的间隙是由他们的margin 值所决定的。两个相邻的块级盒子的垂直外边距会发生叠加。
+
+在块级格式化上下文中，每一个盒子的左外边缘（margin-left）会触碰到容器的左边缘(border-left)（对于从右到左的格式来说，则触碰到右边缘），即使存在浮动也是如此，除非这个盒子创建一个新的块级格式化上下文。
+
+所谓的bfc其实指的就是他的中文意思，块级格式化上下文，而聪明如你肯定也会想到块级元素和行内元素了，那是不是也有一个行内格式化上下文呢？没错，它确实是有的，那他们都指的是什么呢？
+
+要理解他们是什么我们首先要知道什么叫格式化上下文（Formatting context）和box
+
+---
+
+## Formatting context
+
+Formatting context是W3C CSS2.1规范中的一个概念。它是页面中的一块渲染区域，并且有一套渲染规则，它决定了其子元素将如何定位，以及和其他元素的关系和相互作用。最常见的 Formatting context 有 Block fomatting context (简称BFC)和 Inline formatting context (简称IFC)。
+
+CSS2.1 中只有 BFC 和 IFC, CSS3 中还增加了 GFC 和 FFC。
+
+## Box
+
+Box是CSS布局的对象和基本单位， 直观点来说，就是一个页面是由很多个Box组成的。元素的类型和display属性，决定了这个Box的类型。 不同类型的Box， 会参与不同的Formatting context，因此Box内的元素会以不同的方式渲染。
+
+常见的盒子类型:
+
+1.block-level box: display属性为block, list-item, table的元素，会生成block-level box。并且参与block fomatting context(bfc)。==> 块级元素生成的box
+
+2.inline-level box: display属性为inline, inline-block, inline-table的元素，会生成inline-level box。并且参与inline formatting context(ifc)。==> 行内元素生成的box
+
+## block formatting context
+
+有了以上这些概念，我们就可以理解什么叫做块级格式化上下文，其实简单的来讲就是在我们块级元素生成的block-level box的盒子模型所规定的布局规则，而在这里纠正一下，我们平时所说的触发bfc模式的说法是错误的，我们所谓的触发其实是新建一个新的block-level box，让新生成的盒子的内部元素布局和外部父级元素的布局分割开来，以避免外部盒子的规则影响内部布局
+
+上文提了不少规则，那么在bfc的盒子里我们应该遵守怎么样的规则呢？
+
+我们bfc遵照这样的规则
+
+* 内部的Box会在垂直方向，一个接一个地放置
+* Box垂直方向的距离由margin决定。属于同一个BFC的两个相邻Box的margin会发生重叠（想到什么了吗？没错，所谓的magin塌陷和magin合并就是这个规则引起的）
+* 每个元素的margin-box的左边， 与包含块border-box的左边相接触(对于从左往右的格式化，否则相反)。即使存在浮动也是如此。
+* BFC就是页面上的一个隔离的独立容器，容器里面的子元素不会影响到外面的元素，反之亦然。
+* BFC的区域不会与float box重叠（也就是说能看见浮动元素，可应用于两栏布局）。
+
+关于最后一条规则需要注意的是：
+
+1.当容器有足够的剩余空间容纳 BFC 的宽度时，所有浏览器都会将 BFC 放置在浮动元素所在行的剩余空间内。
+2.当 BFC 的宽度大于容器剩余宽度时，BFC会换行。
+
+哪些元素会生成BFC
+
+* 根元素
+* float属性不为none
+* position为absolute或fixed
+* display为inline-block, table-cell, table-caption, flex, inline-flex
+* overflow不为visible
+
+了解了为什么，怎么做,我们应该如何用呢？
+1.解决margin叠加问题（规则：BFC就是页面上的一个隔离的独立容器，容器里面的子元素不会影响到外面的元素，反之亦然）
+
+```
+<style>
+p {
+    color:black;
+    background: #FF0000;
+    width: 200px;
+    line-height: 100px;
+    text-align:center;
+    margin: 50px;
+}
+.BFC {
+    overflow:hidden;
+}
+</style>
+<body>
+    <div class="BFC">
+        <p>hello world</p>
+    </div>
+    <p>hello world</p>
+    <p> hello world</p>
+</body>
+```
+
+2.自适应的两栏布局和清除浮动（规则：BFC的区域不会与float box重叠）
+
+ 自适应两栏布局
+
+ ```
+<style>
+    div {
+        height: 100px;
+    }
+    .right {
+        float: right;
+        width: 100px;
+        background: red;
+    }
+    .left {
+        background: yellow;
+        overflow: hidden;
+    }
+</style>
+<body>
+  <div class="right"></div>
+  <div class="left"></div>
+</body>
+```
+
+清除浮动
+
+```
+<style>
+    .par {
+        border: 5px solid #fcc;
+        width: 300px;
+    }
+
+    .child {
+        border: 5px solid #f66;
+        width:100px;
+        height: 100px;
+        float: left;
+    }
+</style>
+<body>
+    <div class="par">
+        <div class="child"></div>
+        <div class="child"></div>
+    </div>
+</body>
+```

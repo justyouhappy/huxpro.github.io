@@ -8,7 +8,6 @@ header-img: "img/post-bg-rwd.jpg"
 catalog: true
 tags:
     - 前端
-    - 技术
     - react
     - redux
 ---
