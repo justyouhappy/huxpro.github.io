@@ -87,17 +87,17 @@ Box是CSS布局的对象和基本单位， 直观点来说，就是一个页面�
 
 ```
 <style>
-p {
-    color:black;
-    background: #FF0000;
-    width: 200px;
-    line-height: 100px;
-    text-align:center;
-    margin: 50px;
-}
-.BFC {
-    overflow:hidden;
-}
+    p {
+        color:black;
+        background: #FF0000;
+        width: 200px;
+        line-height: 100px;
+        text-align:center;
+        margin: 50px;
+    }
+    .BFC {
+        overflow:hidden;
+    }
 </style>
 <body>
     <div class="BFC">
