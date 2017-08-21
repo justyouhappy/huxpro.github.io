@@ -1,0 +1,141 @@
+---
+layout:     post
+title:      "面试常问之js的那些小事之构造函数和原型对象"
+subtitle:   "\"面试常问之js的那些小事之构造函数和原型对象\""
+date:       2017-08-21
+author:     "Alan"
+header-img: "img/post-bg-alitrip.jpg"
+catalog: true
+tags:
+    - 前端
+    - js
+---
+
+> live like youself. 
+
+
+## 前言
+
+在前端面试里，js无疑是被常常问到，并且是展示你实力的一部分非常重要的部分，那小编最近也算是参加面试的常客了，面试官都喜欢问些什么呢？让我们开始新的序列js那些小事之构造函数和原型对象。
+
+在js里原型链继承无疑是一个很重要的部分，我们并不能停留在表面上去理解这个事情，接下来，让我们一起来研究一下吧
+
+### 一、构造函数
+
+首先我们要理解什么事构造函数，要了解什么是构造函数，我们首先要知道什么是对象。
+
+对象，是javascript中非常重要的一个梗，是否能透彻的理解它直接关系到你对整个javascript体系的基础理解，说白了，javascript里基本万物皆对象（我们前端工程师从来不缺对象，做rd只有我们小姐姐最多！！！）
+
+好了，我们言归正传，怎么去创建一个对象呢？
+
+#### 1.使用new关键字创建
+
+我们来创建一个女朋友出来吧！
+
+```
+var gf = new Object();
+gf.name = "范冰冰";
+gf.bar = "c++";
+gf.sayWhat = function() {
+    alert(this.name + "said:love you forever");
+}
+```
+#### 2.使用字面量创建
+
+来我们用这个方式创建一个对象出来
+
+```
+var gf = {
+    name : "范冰冰",
+    bar : "c++",
+    sayWhat : function() {
+        alert(this.name + "said:love you forever");
+    }
+}
+```
+
+哎，好像蛮方便的，可是我还有前女友李冰冰啊，再写一遍？这时候我们就该用新的方法来构建了
+
+#### 3.使用构造函数来创建对象 ==> 工厂模式
+
+```
+function Gf(name, bar) {
+    this.name = name;
+    this.bar = bar;
+    this.sayWhat = function() {
+        alert(this.name + "said:love you forever");
+    }
+}
+var gf1 = new Gf(“范冰冰”,”c++");
+var gf2 = new Gf(“李冰冰”,"c");
+```
+
+这里我们使用一个大写字母开头的构造函数（注意按照约定构造函数的首字母要大写）。在这里我们创建一个新对象，然后将构造函数的作用域赋给新对象，调用构造函数中的方法。
+
+上面的方式似乎没什么不妥，但是我们可以发现，两个实例中调用的构造函数中的sayWhat方法不是同一个Function实例：
+```
+console.log(gf1.sayWhat == gf2.sayWhat); //false
+```
+明明用的是同一套方法，为什么要生成不同的实例呢？浪费空间不说，执行的时间也被浪费不少啊！
+
+我们怎么解决呢？这就要用到伟大的原型链了 
+
+### 二、原型对象
+
+#### 1.什么是原型对象？
+
+Js所有的函数都有一个prototype属性，这个属性引用了一个对象，即原型对象，也简称原型。
+
+当我们使用构造函数创建出一个对象的时候，此对象会带有__proto__属性，而此属性指向构造函数的原型对象，即构造函数的prototype属性。
+
+又因为当前构造函数构造出所有实例（对象）都有__proto__属性，并且都指向此构造函数的prototype，又称此属性称为这些实例的公共祖先。
+
+所以我们可以解决上面所说的浪费空间和执行时间的问题
+
+```
+function Gf(name, bar) {
+    this.name = name;
+    this.bar = bar;
+}
+GF.prototype.sayWhat = function() {
+    alert(this.name + "said:love you forever");
+}
+var gf1 = new Gf(“范冰冰”,”c++");
+var gf2 = new Gf(“李冰冰”,"c”);
+console.log(gf1.sayWhat == gf2.sayWhat);  //true
+```
+但是问题又来了为什么通过GF实例化的对象都能访问sayWhat属性呢？
+
+这就是我们接下来要讲的原型链了
+
+#### 2.原型链是什么呢？
+
+上文提到我们构造出的实例（对象）有一个属性叫做__proto__，而这个属性里则指向我们上文所说的公共祖先prototype，js在当我们要访问的属性不存在于对象本身属性里就会访问当前对象的__proto__去查找是否在这个原型对象里是否有此属性。
+
+而我们构造函数的prototype也有两个值一个叫做constructor属性，这个属性指向的是构造函数本身，而既然原型对象也是一个对象，那么它必然也有自己__proto__，指向于它的构造函数！这样当我们查询当前对象的原型对象也不存在此属性，我们的js又会自动的向上查找，若此原型对象不是我们自己写的构造函数构造的话，它会默认指向Object.prototype,也就是它的__proto__.constructor指向的是Object
+
+例:
+```
+function Gf(name, bar) {
+    this.name = name;
+    this.bar = bar;
+}
+function Woman() {
+    this.sex = 'woman';
+    this.sayWhat = function() {
+        alert(this.name + "said:love you forever");
+    }
+}
+Gf.prototype == new Woman();
+var gf1 = new Gf("范冰冰","c++");
+console.log(gf1.__proto__ === Woman.prototype) //true
+console.log(Woman.prototype.__proto__.constructor); // Object
+```
+
+如此我们就形成了一个链式的结构，所以我们能得出一个结论，大部分的构造函数的prototype都指向一个对象，所以大部分通过构造函数构造的对象的原型链最终指向都是Object.prototype。
+
+#### 3.在这里我们为什么要说大部分呢？
+
+有一个构造函数是特殊的，那就是Function，Function的prototype指向的是一个内置的函数而这个内置的函数与Object.__proto__是相同的，而实际上在js思想里基本上所有的事物都是对象，而Object这个底层的构造函数实际上也是一个对象，所以Objec的__proto__指向的和Function的prototype相同的原因就很好理解了，实际上他们都是通过js内置的构造函数构造出来的，上面说了js思想里基本上所有的事物都是对象，所以这个函数本质上来讲它也是一个对象，所以的当然也存在__proto__，而它的__proto__则指向了Object.prototype。
+简而言之，所有的Object都有__proto__，其指向其构造函数的prototype，Object和Function都是对象，他们的构造函数一个共同的函数，所以Object.__proto__ === Function.___proto__ === Function.prototype，而Function是唯一的Function.__proto__ === Function.prototype。
+所以当我们使用instanceof检测Function是不是继承与Objec会返回true，而检测Object是不是继承于Function也会返回true了~
