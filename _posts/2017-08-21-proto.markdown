@@ -126,7 +126,7 @@ function Woman() {
         alert(this.name + "said:love you forever");
     }
 }
-Gf.prototype == new Woman();
+Gf.prototype = new Woman();
 var gf1 = new Gf("范冰冰","c++");
 console.log(gf1.__proto__ === Woman.prototype) //true
 console.log(Woman.prototype.__proto__.constructor); // Object
