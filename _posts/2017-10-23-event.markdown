@@ -99,6 +99,7 @@ elem.addEventListener(type, listener[, useCapture, wantsUntrusted  ]);
 表示 listener 是否永远不会调用 preventDefault() （取消默认事件）。
 如果 listener 仍然调用了这个函数，客户端将会忽略它并抛出一个控制台警告。
 * mozSystemGroup: 只能在 XBL 或者是 Firefox' chrome 使用，这是个 Boolean，表示 listener 被添加到 system group。
+
 #### useCapture 
 可选Boolean，是指在DOM树中，注册了该listener的元素，是否会先于它下方的任何事件目标，接收到该事件。
 沿着DOM树向上冒泡的事件不会触发被指定为use capture（也就是设为true）的listener。
@@ -106,17 +107,18 @@ elem.addEventListener(type, listener[, useCapture, wantsUntrusted  ]);
 不同的事件传播方式。
 事件传播模式决定了元素以哪个顺序接收事件。
 如果没有指定， useCapture 默认为 false 。
+
 ### 六、如何将事件移除呢？
 
 每种绑定方式都有一个自己的移除方式
 
-### 1.句柄怎么移除呢？
+#### 1.句柄怎么移除呢？
 
 ```
 elem.onclick = null;//好了~
 ```
 
-### 2.addEventListener || attachEvent 怎么移除呢
+#### 2.addEventListener || attachEvent 怎么移除呢
 两个函数有两种不同的移除方式
 
 1.addEventListener的移除方式
