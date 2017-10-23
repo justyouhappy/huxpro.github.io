@@ -77,7 +77,7 @@ function alertEvent( event ){
 elem.addEventListener(‘click’, alertEvent, false);
 elem.attachEvent(‘onclick’, alertEvent);
 ```
-### 关于addEventListener有一些需要注意的地方(参考mdn)
+### 五、关于addEventListener有一些需要注意的地方(参考mdn)
 1.语法
 ```
 elem.addEventListener(type, listener[, options]);
@@ -106,7 +106,7 @@ elem.addEventListener(type, listener[, useCapture, wantsUntrusted  ]);
 不同的事件传播方式。
 事件传播模式决定了元素以哪个顺序接收事件。
 如果没有指定， useCapture 默认为 false 。
-### 五、如何将事件移除呢？
+### 六、如何将事件移除呢？
 
 每种绑定方式都有一个自己的移除方式
 
