@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "面试常问之js的那些小事之事件（二）"
-subtitle:   "\"面试常问之js的那些小事之事件（二）\""
+subtitle:   "\"事件流\""
 date:       2017-10-23
 author:     "Alan"
 header-img: "img/home-bg-geek.jpg"
@@ -97,6 +97,7 @@ item3.addEventListener("click", function(event){
 ```
 var list = document.getElementById("myLinks");
 list.addEventListener(list, "click", function(event){
+        event=event||window.event;
         var target = event.target;
         switch(target.id){
             case "doSomething":

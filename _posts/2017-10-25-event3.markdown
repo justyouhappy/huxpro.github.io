@@ -1,0 +1,65 @@
+---
+layout:     post
+title:      "面试常问之js的那些小事之事件（三）"
+subtitle:   "\"事件对象\""
+date:       2017-10-25
+author:     "Alan"
+header-img: "img/home-bg-geek.jpg"
+catalog: true
+tags:
+    - 前端
+    - js
+---
+
+> live like youself. 
+
+
+## 前言
+
+在上两篇文章里，不知道大家有没有注意到几个问题，关于事件回调函数的默认参数e（在ie里是window.event）小编并没有详细的讲，那么这个东西是什么呢？接下来小编就好好讲讲这个吧~
+
+### 一、event是什么呢？
+
+这里的event实际上指的是事件的状态，例如触发event对象的元素、鼠标的位置及状态、按下的键等等；再简单一点来说就是，event实际上是浏览器发生事件时，将一些默认参数方法存储到event对象里，再调用我们的回调函数，并将event对象作为参数传入（低版本ie里的做法是改变全局变量里event对象的值）
+
+### 二、event的具体属性(参考w3school)
+#### 1.鼠标，键盘的属性
+![事件对象](/img/event1.png)
+#### 2.ie单独支持的属性
+![事件对象](/img/event2.png)
+#### 3.标准event属性
+![事件对象](/img/event3.png)
+#### 4.标准event方法(ie不支持)
+![事件对象](/img/event4.png)
+注：stopPropagation,简单来讲就是阻止冒泡的发生，preventDefault，其实就是阻止元素的默认事件发生，在低版本ie里并未提供这些方法，但是ie里又两个属性对应他们，就是cancelBubble和returnValue
+
+上面这些在事件的使用上其实是非常常用的，大家一定要了解这些，写到这里，小编真的很想说就这样吧，但是。。。。。。其实下面才是本篇最重要的部分。
+### 三、currentTarget和target
+#### 1.currentTarget 
+事件属性返回其监听器触发事件的节点，即当前处理该事件的元素、文档或窗口。
+
+还记得上篇文章的ul吗？这个currentTarget指的是触发事件的节点，简单来讲，他指的是我们绑定事件的元素(或者可以说是当前发生事件的元素)，所以当在捕获和起泡阶段，该属性是非常有用的，因为在这两个节点，它不同于 target 属性。
+
+需要注意的一点是，其实它等同于回调函数里的this，但是在IE6-8中，事件模型与标准不一样，使用非标准的 element.attachEvent 来绑定事件监听器。该模型中，没有等价于 event.currentTarget 的接口，且 this 指向全局对象。一种模拟 event.currentTarget 功能的方法是：将监听器包在一个函数中，然后使用 Function.prototype.call 调用这个包装函数，并将元素对象作为第一个参数。这样，this 就是想要的值了。
+
+#### 2.target
+事件属性可返回事件的目标节点（触发该事件的节点），如生成事件的元素、文档或窗口。
+所以它也叫事件源对象
+
+看下面代码，你们就可以明白上面所讲的了
+```
+<body>
+<input id="btn" type="button" value="click"/>
+<script>
+    document.body.onclick=function(event){
+        console.log("body中注册的click事件");
+        console.log("this===event.currentTarget? "+(this===event.currentTarget)); //true
+        console.log("currentTarget===document.body?"+(event.currentTarget===document.body)); //true
+        console.log('event.target===document.getElementById("btn")? '+(event.target===document.getElementById("btn"))); //true
+    }
+</script>
+</body>
+```
+
+## 后记
+好了，到此为止关于事件的知识就总结结束了，其实小编真的很想写一些总结性方法的，但是我觉得如果把详细的知识点都写好，这些方法随手写一下就可以了，重要的是原理啊（咳咳，都是借口，小编太懒了）好了，今天就到这吧，希望对大家有所帮助

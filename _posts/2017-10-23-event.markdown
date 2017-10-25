@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "面试常问之js的那些小事之事件（一）"
-subtitle:   "\"面试常问之js的那些小事之事件（一）\""
+subtitle:   "\"事件基础详解\""
 date:       2017-10-23
 author:     "Alan"
 header-img: "img/post-bg-alitrip.jpg"
