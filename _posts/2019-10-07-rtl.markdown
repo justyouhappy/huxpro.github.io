@@ -1,0 +1,90 @@
+---
+layout:     post
+title:      "从右到左（RTL）语言适配web业务实践"
+subtitle:   "\" 适配 \""
+date:       2019-10-07
+author:     "Alan"
+header-img: "img/home-bg-geek.jpg"
+catalog: true
+tags:
+    - 前端
+    - css
+---
+
+> live like youself. 
+
+
+### 前言
+
+LTR（left-to-right) 是什么？
+
+LTR (Left To Right) is a locale property indicating that text is written from left to right. For example, the en-US locale (for US English) specifies left-to-right. Most Western languages, as well as many others around the world, are written LTR.
+
+LTR（从左到右）是一个区域设置属性，指示从左到右写入文本。例如，en-us语言环境（对于美国英语）指定从左到右。大多数西方语言，以及世界上许多其他语言，都是用ltr写成的。
+
+RTL (right-to-left) 是什么？
+RTL (Right To Left) is a locale property indicating that text is written from right to left. For example, the he locale (for Hebrew) specifies right-to-left. Arabic (ar) is another common language written RTL.
+
+rtl（从右到左）是一个本地属性，指示从右到左写入文本。例如，he locale（希伯来语）指定从右到左。阿拉伯语是另一种通用语言。
+
+### 方案
+
+通过给html添加direction： rtl 来整体适配，实现如下：
+```
+html.rtl {
+    direction: rtl;
+}
+
+export const forceRTL = () => {
+    document.documentElement.setAttribute('class', 'rtl')
+}
+```
+#### 1. direction 属性简介:
+具体文档： [direction](https://developer.mozilla.org/zh-CN/docs/Web/CSS/direction)
+
+该属性设置可以设置块级元素文本的基本方向，也可以设置由通过[unicode-bidi](https://developer.mozilla.org/zh-CN/docs/Web/CSS/unicode-bidi)属性创建的嵌入元素的方向。与此同时，它还可以设置文本、块级元素的默认对齐方式 ，以及表行中的单元格的流动方向。
+
+与 HTML 中的 dir 属性不同，direction属性不会从表列继承到表单元格, 因为 CSS 继承遵从文档流, 而表单元格位于行内部, 但不在列内部。
+
+direction 属性和 unicode-bidi 属性不受[all](https://developer.mozilla.org/zh-CN/docs/Web/CSS/all) 属性影响。
+
+取值：
+
+ltr —（默认）可设置文本和其他元素的默认方向是从左到右。
+
+rtl — 可设置文本和其他元素的默认方向是从右到左。
+
+当元素设置direction: rtl后，文字的书写方向是从右至左以及元素的对齐属性。direction还有控制text-align默认值的作用，如果没有预先定义过text-align，那么这个元素的text-align的值就变成了“right”，即文字右对齐。
+
+#### 2. direction属性能解决所有rtl的适配问题吗？
+上面介绍了一些 direction 的基本用法，那是不是就可以认为只要使用 direction: rtl 之后网站就可以做到兼容阿拉伯语/希伯来语等排版从右往左的网站了呢？答案是否定的。 direction 的功能并没有想象中那么强大。
+
+页面布局是千变万化的，比如我们常使用的布局有：flex，内联，浮动，绝对定位等布局方式。
+
+对一些常用的布局方式进行测试：
+1. flex 布局：[jsfiddle.net/r46g78ou/](http://jsfiddle.net/r46g78ou/)
+2. inline-block 布局：[jsfiddle.net/t7kn9dap/](http://jsfiddle.net/t7kn9dap/)
+3. float 布局：[jsfiddle.net/mtcv5sq6/](http://jsfiddle.net/mtcv5sq6/)
+4. 绝对定位布局：[jsfiddle.net/w7nure9s/](http://jsfiddle.net/w7nure9s/)
+
+通过上述的测试可以发现 direction 只能改变 display: flex/inline-block 元素的书写方向，对于 float和绝对定位布局就无能为力，更别谈复杂的页面布局，比如[BFC 布局](https://developer.mozilla.org/zh-CN/docs/Web/Guide/CSS/Block_formatting_context) 、[双飞翼、圣杯布局等等](https://juejin.im/post/5a9813d6f265da237506506f)。（做多语言适配的需求时，一定要注意避免这些的使用）
+
+另外 direction 无法改变 margin, padding, border 的水平方向，也就是说除非你的元素是居中的，否则
+当你的元素是不对称的话，即使你改变了元素的书写方向和顺序，margin-left 还是指向左边的，它并不会留出右边的空白，在左右间距不对称的时候，直接使用 direction 会对我们本来设计的布局产生效果上的偏差。
+除此之外，又对一些特殊元素是不生效的，比如说input、textarea、img（图片的展示方向不会变）。
+
+那这里我们是怎么解决的呢？
+
+这里其实只能通过特殊的样式去特殊适配了
+```
+html.rtl input,textarea {
+    text-align: right;
+}
+.icon-rtl {
+    transform: scaleX(-1),
+ }
+```
+
+### 后记
+
+如此一个简单rtl语言适配方案就有了
