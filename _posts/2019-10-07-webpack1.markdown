@@ -1,0 +1,525 @@
+---
+layout:     post
+title:      "webpack源码解析（1）"
+subtitle:   "\" webpack配置过程 \""
+date:       2019-10-07
+author:     "Alan"
+header-img: "img/home-bg-geek.jpg"
+catalog: true
+tags:
+    - 前端
+    - js
+    - webpack
+---
+
+> live like youself. 
+
+
+### 前言
+
+对于一个标准的前端工程师，对于编译的过程的了解是必不可少的，下面让我们一起来看下打包工具webpack的源码，了解其工作原理吧
+
+### webpack安装以及执行命令原理
+
+#### 一、安装webpack
+
+webpack的安卓分为本地安装和全局安装
+
+全局安装
+```
+npm install -g webpack
+```
+
+本地安装
+```
+npm install webpack
+```
+#### 二、全局安装和本地安装的区别
+ 
+1.安装方式不同
+2.安装的目录不同：
+
+（1）本地安装会将webpack，下载到当前目录的node_modules文件中，并在.bin生成相应的软链文件指向webpack目录中的bin文件中的webpakc.js文件。
+（2）全局安装会将webpack，安装到全局的node的根路径中的node_modules中，并在node的根目录中的bin文件中生成一个软链并指向node_modules下的webpack目录中的bin文件中的webpakc.js文件。
+
+3.执行方式不同：
+（1）当本地安装是，需要在package.josn中设置script中设置npm脚本进行调用。
+（2）而全局安装的，则是直接命令行工具中执行webpack命令即可
+
+#### 三、执行方式详解
+
+1. 本地安装的webpack执行
+
+（1）本地安装的webpack是通过设置npm脚本去执行node_modules目录中，.bin目录的脚本。那npm脚本指的又是什么呢？
+
+（2） npm通过在package.josn文件配置script字段定义脚本执行
+```
+{
+    //…
+    "scripts": {
+        "start": "webpack",
+    }
+}
+```
+
+ （3）script的每一个属性对应一个脚本，比如start对应的就是node start.js，当我们使用 npm run命令时，就相当于执行 
+node start.js
+```
+npm run start
+等同于
+node start.js
+```
+
+ (4) 所以执行start.js时，发现里面有命令webpack，node就会优先在当前目录下node_modules目录中的.bin中寻找相应的脚本执行，若未发现此脚本，则相当于在命令行直接输入命令webpack。
+
+2. 全局安装的webpack执行
+
+全局安装的webpack会在安装时声明一个全局的环境变量webpack，这个变量会指向node的根目录下的bin文件的webpack脚本中,当执行webpack命令时，会直接执行bin目录下的webpack脚本 ==> 等同于执行全局node_modules下的bin目录下的webpack.js
+
+3. 同时安装全局版本和本地版本的webpack执行
+
+在4.0版本中当在命令行直接执行webpack时，默认执行的是全局webpack。在npm脚本执行webpack命令则会执行本地版本的webpack。
+
+#### 四、小结
+1. 全局安装webpcak是安装到全局node目录下的node_modules下
+
+2. 本地安装webpack是安装到当前目录下的node_modules下
+
+3. 命令行执行webpack，执行全局webpack
+
+4. npm脚本执行weback，会优先执行本地webpack，当本地未安装时，会到全局执行
+
+5. 全局执行webpack是通过执行node目录下bin目录下的软链文件（链接至全局webpack目录下的bin目录中的webpack.js）
+
+6. 本地执行webpack是通过执行node_modules目录下.bin目录下的软链文件（链接至webpack目录下的bin目录中的webpack.js）
+
+### webpack入口文件
+
+通过上面的讲解，我们知道了，当我们执行webpack时会通过webpack目录下的bin目录下的webpack.js脚本执行，作为一个入口文件。
+首先，我们需要了解webpack4.0是依赖于webpack-cli 或 webpack-command，所以入口文件最先要验证这两个包是否有其中一个存在。
+Ps: webpack-cli 或 webpack-command 实际上是单独将webpack中的命令行逻辑单独抽象的一个包，所以这是一个强依赖的包
+
+#### 一、检测是不是有安装webpack-cli 或 webpack-command
+
+```
+//列举cli的list
+const CLIs = [
+   {
+       name: "webpack-cli",
+       package: "webpack-cli",
+       binName: "webpack-cli",
+       alias: "cli",
+       installed: isInstalled("webpack-cli"),
+       url: "https://github.com/webpack/webpack-cli",
+       description: "The original webpack full-featured CLI."
+   },
+   {
+       name: "webpack-command",
+       package: "webpack-command",
+       binName: "webpack-command",
+       alias: "command",
+       installed: isInstalled("webpack-command"),
+       url: "https://github.com/webpack-contrib/webpack-command",
+       description: "A lightweight, opinionated webpack CLI."
+   }
+];
+//判断是否有装载脚手架
+const isInstalled = packageName => {
+   try {
+       require.resolve(packageName);
+
+
+       return true;
+   } catch (err) {
+       return false;
+   }
+};
+const installedClis = CLIs.filter(cli => cli.installed);
+const path = require("path");
+const pkgPath = require.resolve(`${installedClis[0].package}/package.json`);
+// eslint-disable-next-line node/no-missing-require
+const pkg = require(pkgPath);
+// eslint-disable-next-line node/no-missing-require
+require(path.resolve(
+    path.dirname(pkgPath),
+    pkg.bin[installedClis[0].binName]
+));
+console.log(path.resolve(
+   path.dirname(pkgPath),
+   pkg.bin[installedClis[0].binName]
+));
+```
+
+整体的执行流程就是通过一个数组来存储必须依赖的脚手架，判断是否有下载脚本，如果没有下载此依赖，则吐出错误提示。在webpack的代码里是优先执行webpack-cli的，所以我们就以webpack-cli作为切入点，当代码检查到我们是安装了webpack-cli。则会执行此脚本目录下的bin目录中的webpack.js文件。
+
+#### 二、当webpack检测到未安装此包会做什么处理呢？
+
+1. 拼接提示，并且输出。
+```
+let notify = "One CLI for webpack must be installed. These are recommended choices, delivered as separate packages:”;
+
+
+for (const item of CLIs) {
+    notify += `\n - ${item.name} (${item.url})\n ${item.description}`;
+}
+
+console.error(notify);
+```
+
+2. 根据你当前的环境来判断，使用的是npm 还是yarn安装的webpack，然后新建一个question进程。
+```
+const isYarn = fs.existsSync(path.resolve(process.cwd(), "yarn.lock"));
+const packageManager = isYarn ? "yarn" : "npm";
+const installOptions = [isYarn ? "add" : "install", "-D"];
+console.error(`We will use "${packageManager}" to install the CLI via "${packageManager} ${installOptions.join(" ")}".`);
+let question = `Which one do you like to install (${CLIs.map( item => item.name).join("/")}):\n`;
+const questionInterface = readLine.createInterface({
+   input: process.stdin,
+   output: process.stderr
+});
+```
+
+3. 根据你的选择，做相应的处理
+```
+//未输入答案 停止进程
+if (!normalizedAnswer) {
+
+
+    console.error(
+        "One CLI needs to be installed alongside webpack to use the CLI.”
+    );
+    
+    process.exitCode = 1;
+    
+    return;
+} else if (!selectedPackage) {
+//输入错误,输出错误提示
+   console.error(
+       "No matching choice.\n" +
+       "One CLI needs to be installed alongside webpack to use the CLI.\n" +
+       "Try to installing your CLI of choice manually.”
+   );
+   process.exitCode = 1;
+
+
+   return;
+}
+//输入正确，调用函数runCommand，下载模块
+const runCommand = (command, args) => {
+   const cp = require("child_process");
+   return new Promise((resolve, reject) => {
+       const executedCommand = cp.spawn(command, args, {
+           stdio: "inherit",
+           shell: true
+       });
+
+
+       executedCommand.on("error", error => {
+           reject(error);
+       });
+
+
+       executedCommand.on("exit", code => {
+           if (code === 0) {
+               resolve();
+           } else {
+               reject();
+           }
+       });
+   });
+};
+runCommand(packageManager, installOptions.concat(packageName))
+   .then(() => {
+        // 成功则引入下载包，此包的入口文件是一个立即执行函数，所以在引入之后，就会执行
+        require(packageName); //eslint-disable-line
+   })
+    .catch(error => {
+        // 失败输出错误原因，并退出进程
+        console.error(error);
+        process.exitCode = 1;
+   });
+```
+
+### webpack-cli
+
+通过上面，我们得知，当webpack入口文件执行结束之后，会跳到webpack-cli的入口文件执行（这也是为什么webpack必须下载webpack-cli或者webpack-command的原因），那么接下来了解一下webpack-cli做了什么。
+从package.json中可以看见webpack-cli的入口文件是./bin/cli.js 
+
+#### 一、执行前准备
+
+1. 判断webpack-cli是项目级别的还是本地级别，优先执行本地，主要是通过importLocal来实现的
+```
+const importLocal = require("import-local");
+// Prefer the local installation of webpack-cli
+if (importLocal(__filename)) {
+    return;
+}
+```
+
+2. 判断需要通过下载对应loader才能使用的命令，这部分和webpack打包的关系不大，主要是webpack-cli这个脚手架本身的功能，大致有下面的集合。
+```
+const NON_COMPILATION_ARGS = [
+   "init",
+   "migrate",
+   "add",
+   "remove",
+   /*
+   "update",
+   "make",
+   */
+   "serve",
+   "generate-loader",
+   "generate-plugin",
+   "info"
+];
+```
+
+3. 利用yargs来处理命令，将常规的-h,-v这类命令进行处理（和webpack配置无关的命令）
+```
+module.exports = function(yargs) {
+   yargs
+       .help("help”)  // 设置帮助的指令，添加 --help ，但是没有 -h ，需要手动添加，可以选择是否添加 help 子命令
+       .alias("help", "h”) // 设置 help 别名h
+       .version() // 添加版本显示参数 --version，不过不添加缩写参数
+       .alias("version", "v”) // 设置verison 别名v
+       .options({
+            //…
+            //将上面的的所有的命令合并成一个 object，里面的 key 就是对应的命令名，而值就是命令的配置参数
+        });
+}
+```
+
+#### 二、执行打包相关命令
+
+1. 预处理命令行，加上必须配置的命令。
+```
+//-d 在webpack的命令行里等同于 --debug --devtool cheap-module-eval-source-map --output-pathinfo 
+if (argv.d) { 
+    //判断当前已经输入了-d, 把loader设置为debug模式,设置sourch-map模式为cheap-module-eval-source-map 设置output-pathinfo，对输出加入一些依赖信息的注解 
+    argv.debug = true; 
+    argv["output-pathinfo"] = true; 
+    if (!argv.devtool) { 
+        argv.devtool = "eval-cheap-module-source-map"; 
+    } 
+    if (!argv.mode) { 
+        // -d时如果没声明模式，默认为开发模式 
+        argv.mode = "development"; 
+    } 
+} 
+//-p 在webpack的命令行里等同于 --optimize-minimize --define process.env.NODE_ENV="production" 
+if (argv.p) {
+   //判断当前已经输入了-p, 压缩混淆 javascript（ugly）, 定义bundle 中的任意自由变量process.env.NODE_ENV="production”
+   argv["optimize-minimize"] = true; 
+   argv["define"] = []
+   .concat(argv["define"] || [])
+   .concat("process.env.NODE_ENV=\"production\"");
+   if (!argv.mode) {
+       // -p时如果没声明模式，默认为生产模式
+       argv.mode = "production";
+   }
+}
+// 判断是否设置了输出路径，更改输出的路径以及输出的文件名称
+if (argv.output) {
+   let output = argv.output;
+   if (!path.isAbsolute(argv.o)) {
+       output = path.resolve(process.cwd(), output);
+   }
+   argv["output-filename"] = path.basename(output);
+   argv["output-path"] = path.dirname(output);
+}
+```
+
+2. 读取我们的配置问题，合并出整体的webpack config传入webpack打包，如果没有声明配置文件路径，这里是通过生成一个遍历的文件列表取出真正的配置文件列表（没错是列表，webpack支持多配置文件）。
+```
+[ { path: '/Users/alan/Desktop/demo/webpack.config.js',
+    ext: '.js' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.ls',
+    ext: '.ls' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.eg',
+    ext: '.eg' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.co',
+    ext: '.co' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.ts',
+    ext: '.ts' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.xml',
+    ext: '.xml' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.ini',
+    ext: '.ini' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.csv',
+    ext: '.csv' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.yml',
+    ext: '.yml' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.jsx',
+    ext: '.jsx' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.tsx',
+    ext: '.tsx' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.wisp',
+    ext: '.wisp' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.cjsx',
+    ext: '.cjsx' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.json',
+    ext: '.json' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.toml',
+    ext: '.toml' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.iced',
+    ext: '.iced' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.node',
+    ext: '.node' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.yaml',
+    ext: '.yaml' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.json5',
+    ext: '.json5' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.cirru',
+    ext: '.cirru' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.coffee',
+    ext: '.coffee' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.liticed',
+    ext: '.liticed' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.iced.md',
+    ext: '.iced.md' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.buble.js',
+    ext: '.buble.js' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.babel.js',
+    ext: '.babel.js' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.litcoffee',
+    ext: '.litcoffee' },
+  { path: '/Users/alan/Desktop/demo/webpack.config.coffee.md',
+    ext: '.coffee.md' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.js', ext: '.js' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.ls', ext: '.ls' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.eg', ext: '.eg' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.co', ext: '.co' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.ts', ext: '.ts' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.xml',
+    ext: '.xml' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.ini',
+    ext: '.ini' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.csv',
+    ext: '.csv' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.yml',
+    ext: '.yml' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.jsx',
+    ext: '.jsx' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.tsx',
+    ext: '.tsx' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.wisp',
+    ext: '.wisp' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.cjsx',
+    ext: '.cjsx' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.json',
+    ext: '.json' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.toml',
+    ext: '.toml' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.iced',
+    ext: '.iced' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.node',
+    ext: '.node' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.yaml',
+    ext: '.yaml' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.json5',
+    ext: '.json5' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.cirru',
+    ext: '.cirru' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.coffee',
+    ext: '.coffee' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.liticed',
+    ext: '.liticed' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.iced.md',
+    ext: '.iced.md' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.buble.js',
+    ext: '.buble.js' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.babel.js',
+    ext: '.babel.js' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.litcoffee',
+    ext: '.litcoffee' },
+  { path: '/Users/alan/Desktop/demo/webpackfile.coffee.md',
+    ext: '.coffee.md' } ]
+```
+
+3. 每一种类型的文件(除.js)都有一种需要引入loader，这里webpack-cli需要引入解析器，来将文件内容转换成js能理解的模式(配置文件用js写会省事好多)，逻辑如下。
+```
+if (configFiles.length > 0) { 
+       // 声明函数registerCompiler
+       const registerCompiler = function registerCompiler(moduleDescriptor) { 
+            // 当moduleDescriptor为null的时候不执行下面代码，例如.js
+           if (moduleDescriptor) { 
+               if (typeof moduleDescriptor === "string") { 
+                    // 当前文件类型只需要一种loader解析，直接引入文件 
+                   require(moduleDescriptor); 
+               } else if (!Array.isArray(moduleDescriptor)) { 
+                    // 如果是对象的时候 
+                    // 例如 '.toml': {
+                    //           module: 'toml-require',
+                    //           register: function (module) {
+                    //                  module.install();
+                    //           }
+                    //        }
+                    // 当前解析的module需要调用
+                   moduleDescriptor.register(require(moduleDescriptor.module)); 
+               } else { 
+                    // 如果是数组则递归调用 
+                   for (let i = 0; i < moduleDescriptor.length; i++) { 
+                       try { 
+                            registerCompiler(moduleDescriptor[i]); 
+                           break; 
+                       } catch (e) { 
+                           // do nothing 
+                       } 
+                   } 
+               } 
+           } 
+       }; 
+       // 声明函数requireConfig
+       const requireConfig = function requireConfig(configPath) { 
+           let options = (function WEBPACK_OPTIONS() { 
+                //config-register 加载文件之前先预加载的模块
+               if (argv.configRegister && argv.configRegister.length) { 
+                    // 在模块的搜索路径上添加我们所需要预加载的模块路径 
+                   module.paths.unshift( 
+                       path.resolve(process.cwd(), "node_modules"), 
+                       process.cwd() 
+                   ); 
+                    // 根据声明去导入模块 
+                   argv.configRegister.forEach(dep => { 
+                       require(dep); 
+                   }); 
+                    最后引入webpack配置文件 
+                   return require(configPath); 
+               } else { 
+                    引入webpack配置文件
+                   return require(configPath); 
+               } 
+           })(); 
+            //这里调用的webpack-cli的prepareOptions模块,将当前引入的配置文件模块解析 
+           options = prepareOptions(options, argv); 
+           return options; 
+       }; 
+        //遍历配置文件数组
+       configFiles.forEach(function(file) { 
+           // interpret.extensions[file.ext]的值是解析当前文件类型所需要的loader
+           // 调用registerCompiler，作用将执行下面文件类型所需要的loader 执行，保证下面的配置文件可以执行
+           registerCompiler(interpret.extensions[file.ext]); 
+            // requireConfig的作用是执行配置文件require并将结果返回，存储到options中 
+           options.push(requireConfig(file.path)); 
+       }); 
+       configFileLoaded = true; 
+        //如果将配置文件解析并引入则设置configFileLoaded为true执行下面逻辑
+   }
+```
+
+4. 然后会对读出来的配置做一个格式检验，如果不通过则报错（通过预先写好的规则文件，调用webpack整体的格式错误检测模块）
+const WebpackOptionsValidationError = require("webpack") .WebpackOptionsValidationError;
+
+5. 对配置做预处理，我们使用webpack的人，应该会了解webpack是可以通过命令行，去增加一些配置的，以及有些需要通过命令行来配置的默认项（webpack内置的配置不包含的，webpack里也会对一些默认项的配置，而这些是不需要暴露到命令行里去配置的）这里的逻辑不再多说（很啰嗦的一套逻辑....）。
+
+6. 输出配置，将处理后的多配置或者单配置送到webpack进行处理
+compiler = webpack(options); 
+
+#### 三、小结
+
+webpack的入口文件到webpack-cli执行结束，这部分的逻辑都是为了生成一个符合webpack配置规则的对象或者对象数组，便于webpack根据规则去解析编译，实现构建的一个模型。
+
+
+### 后记
+
+如此webpack命令行执行后，将命令行转为配置的操作就结束了。

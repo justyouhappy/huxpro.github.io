@@ -1,0 +1,720 @@
+---
+layout:     post
+title:      "webpack源码解析（2）"
+subtitle:   "\" webpack构建模块解读 \""
+date:       2019-10-07
+author:     "Alan"
+header-img: "img/home-bg-geek.jpg"
+catalog: true
+tags:
+    - 前端
+    - js
+    - webpack
+---
+
+> live like youself. 
+
+
+### 前言
+
+webpack的本质是事件与插件
+
+### 一、初始化
+
+#### 1. webpack入口
+
+通过上篇文章，我们可知我们通过了webpack-cli结束的时候调用了webpack
+```
+compiler = webpack(options); 
+```
+看下webpack的主要函数
+```
+const Compiler = require("./Compiler”);
+const MultiCompiler = require("./MultiCompiler"); 
+const NodeEnvironmentPlugin = require("./node/NodeEnvironmentPlugin"); 
+const WebpackOptionsApply = require("./WebpackOptionsApply"); 
+const WebpackOptionsDefaulter = require("./WebpackOptionsDefaulter"); 
+const validateSchema = require("./validateSchema"); 
+const WebpackOptionsValidationError = require("./WebpackOptionsValidationError"); 
+const webpackOptionsSchema = require("../schemas/WebpackOptions.json"); 
+const RemovedPluginError = require("./RemovedPluginError"); 
+const version = require("../package.json").version; 
+// ...模块引入
+
+function webpack(options, callback) {
+    // 错误检测
+    const webpackOptionsValidationErrors = validateSchema(webpackOptionsSchema, options);
+    if(webpackOptionsValidationErrors.length) {
+        throw new WebpackOptionsValidationError(webpackOptionsValidationErrors);
+    }
+    let compiler;
+    // 多配置
+    if(Array.isArray(options)) {
+        compiler = new MultiCompiler(options.map(options => webpack(options)));
+    }
+    // 单配置
+    else if(typeof options === "object") { /*...*/ }
+    else {
+        throw new Error("Invalid argument: options");
+    }
+    if(callback) { /*...*/ }
+    return compiler;
+}
+exports = module.exports = webpack;
+
+webpack.WebpackOptionsDefaulter = WebpackOptionsDefaulter;
+// ...属性挂载
+
+function exportPlugins( /*...*/ )
+
+exportPlugins( /*...*/ );
+exportPlugins( /*...*/ );
+```
+#### 2. options默认处理
+
+webpack构建第一步，就是解析我们传入的options对里面的配置项进行包装（增加函数处理或默认值），再重新输出。 首先通过WebpackOptionsDefaulter实例这个类的process这个方法，进行默认配置处理， 我们来看一下这个类 
+```
+"use strict"; 
+
+const OptionsDefaulter = require("./OptionsDefaulter"); 
+const Template = require("./Template"); 
+
+class WebpackOptionsDefaulter extends OptionsDefaulter { 
+   constructor() { 
+       super(); 
+       this.set("entry", "./src"); 
+       // 大量的调用this.set... 
+   } 
+} 
+module.exports = WebpackOptionsDefaulter; 
+```
+我们发现实际上WebpackOptionsDefaulter是继承了OptionsDefaulter这个类，其中实例化的时候调用的this.set和外面调用的process都是调用的OptionsDefaulter这个类里面的方法，看一下OptionsDefaulter这个类 。
+```
+"use strict";
+
+function getProperty(obj, name) { /**/ }
+
+function setProperty(obj, name, value) { /**/ }
+
+class OptionsDefaulter {
+    constructor() {
+        this.defaults = {};
+        this.config = {};
+    }
+
+    process(options) {
+        //...
+    }
+
+    set(name, config, def) {
+        //...
+    }
+}
+module.exports = OptionsDefaulter;
+```
+
+在WebpackOptionsDefaulter初始化的时候会执行下面的函数 
+
+```
+set(name, config, def) {
+    if (arguments.length === 3) {
+        this.defaults[name] = def;
+        this.config[name] = config;
+    } else {
+        this.defaults[name] = config;
+        delete this.config[name];
+    }
+ }
+```
+它的作用就是给this.defaults和this.config赋值, 这里defaults代表默认值，config代表对options参数的处理方法类型，之后执行process函数，这里会根据defaults和对应的config的值去处理我们的options，将未在options里配置的配置能取到对应的配置，其中根据this.defaults和this.config的值对options做对应的处理 
+```
+switch (this.config[name]) { 
+    case undefined: 
+        if (getProperty(options, name) === undefined) { 
+            setProperty(options, name, this.defaults[name]); 
+        } 
+        break; 
+    case "call": 
+        setProperty( 
+            options, 
+            name, 
+            this.defaults[name].call(this, getProperty(options, name), options) 
+         ); 
+        break; 
+    case "make": 
+        if (getProperty(options, name) === undefined) { 
+            setProperty(options, name, this.defaults[name].call(this, options)); 
+        } 
+        break; 
+    case "append": { 
+        let oldValue = getProperty(options, name); 
+            if (!Array.isArray(oldValue)) { 
+                oldValue = []; 
+            } 
+            oldValue.push(...this.defaults[name]); 
+            setProperty(options, name, oldValue); 
+        break; 
+    } 
+    default: 
+        throw new Error( 
+            "OptionsDefaulter cannot process " + this.config[name] 
+        ); 
+ } 
+```
+上面的代码代表会根据config的四种值：undefined call make append，以及this.default的值，对options的配置做对应的处理。
+
+1. 如果值是undefined 代表不用特殊处理，如果options中没有对应配置，直接将defaluts里的值赋值给options。
+2. 如果值是call，代表options里对应的配置的值要在defaluts里声明的函数去处理后，再将结果赋值给options对应的配置
+3. 如果值是make，代表这个配置如果是已经在options存在了，是不需要特殊处理的，如果不存在，则会把default里声明的函数执行，并把options作为参数传入，最后将执行结果赋值给对应options的配置上。
+4. 如果值是append，则代表此配置是一个数组，需要将default里的值赋值给options的对应的配置里
+
+此模块的作用就是将我们注入的options做一些默认处理，或者默认值的赋值。 
+
+
+### 二、Compiler类
+
+#### 1. 概念
+Compiler模块是做什么用的呢？  官方定义 
+Compiler 模块是 webpack 的支柱引擎，它通过 CLI 或 Node API 传递的所有选项，创建出一个 compilation 实例。它扩展(extend)自 Tapable 类，以便注册和调用插件。大多数面向用户的插件首，会先在 Compiler上注册。
+
+也就是一个钩子，上面注册了面向用户的钩子。通过实例化Compiler类实例化一个compiler对象
+```
+compiler = new Compiler(options.context);
+```
+Compiler类，是继承了Tapable的一个类，在webpack4里Tapable的版本是^1.0.0 
+```
+const { 
+   Tapable, 
+   SyncHook, 
+   SyncBailHook, 
+   AsyncParallelHook, 
+   AsyncSeriesHook 
+} = require("tapable"); 
+class Compiler extends Tapable {...} 
+```
+
+Tapable是干什么的呢？这就是本节我们需要了解的内容。官方定义:
+
+Tapable 是一个小型的库，允许你对一个 javascript 模块添加和应用插件。它可以被继承或混入到其他模块中。类似于 NodeJS 的 EventEmitter 类，专注于自定义事件的触发和处理。除此之外，Tapable 还允许你通过回调函数的参数，访问事件的“触发者(emittee)”或“提供者(producer)”。
+
+下面是Tapable里各种自定义事件的名称以及要点。
+![tapable](/img/tapable.png)
+
+webpack通过继承于Tapable的Compiler声明了各种事件钩子，去处理配置项声明好的编译。compiler实际上就是一个事件流用来管理webpack编译的每一步。
+
+我们写webpack插件的固定格式实际上也是依赖于此模块的api的，举个🌰：[编写插件](https://webpack.docschina.org/contribute/writing-a-plugin/)
+
+#### 2. NodeEnvironmentPlugin：输入输出 
+
+Compiler 实例在一开始也会初始化输入输出，分别是 inputFileSystem 和 outputFileSystem 属性，一般情况下这两个属性都是对应的 nodejs 中拓展后的 fs 对象。但是有一点要注意，当 Compiler 实例以 watch 模式运行时， outputFileSystem 会被重写成内存输出对象。也就是说，实际上在 watch 模式下，webpack 构建后的文件并不会生成真正的文件，而是保存在内存中。
+其中inputFileSystem是通过enhanced-resolve/lib/CachedInputFileSystem做了一个缓存机制。
+在NodeEnvironmentPlugin里，埋下了一个事件流节点，作用是在真正run之前清除所有对文件的缓存。
+```
+compiler.hooks.beforeRun.tap("NodeEnvironmentPlugin", compiler => {
+    if (compiler.inputFileSystem === inputFileSystem) inputFileSystem.purge();
+});
+```
+#### 3. Options属性
+
+当webpack开始运行是，第一件事就是解析我们初始化后的options，然后挂载到Compiler上。如果说WebpackOptionsApply.process 这个方法将会针对我们传进去的webpack 编译对象进行逐一编译，此函数的作用就是将options激活并挂载到Compiler，等待编译调用。（这里有玄机，买个关子）
+```
+compiler = new Compiler();
+// 其他代码..
+compiler.options = new WebpackOptionsApply().process(options, compiler);
+```
+当compiler初始化结束之后，我们就会回到webpack-cli的逻辑
+#### 4. Compiler.run
+
+回到webpack-cli逻辑我们可以看见有些命令，在compiler初始化之后才会执行，比如打印百分比的命令--progress，为什么这么写呢？原因其实很简单，这些插件是在compiler编译的事件流中执行，所以需要在compiler初始化之后才可以挂载插件到complier上，complier是我们所有自定义插件的挂载的目标。
+
+```
+if (argv.progress) {
+    const ProgressPlugin = require("webpack").ProgressPlugin;
+    new ProgressPlugin({
+        profile: argv.profile
+    }).apply(compiler);
+}
+
+if (outputOptions.infoVerbosity === "verbose") {
+    compiler.hooks.beforeCompile.tap("WebpackInfo", compilation => {
+        console.log("\nCompilation starting…\n");
+    });
+    compiler.hooks.afterCompile.tap("WebpackInfo", compilation => {
+        console.log("\nCompilation finished\n");
+    });
+}
+```
+接下来有就会有两个分支了，一种是watch，一种是run，既然是希望了解打包流程我们直接看run的逻辑了
+
+重点来了
+
+我们调用了Comiler.run()，可以看下，我们首先触发了beforeRun这个async钩子，在这个钩子中绑定了读取文件的对象，也会触发上面说的清除文件缓存的逻辑。接着是run这个async钩子，在这个钩子中通过readRecords这个函数，去处理缓存的模块，减少编译的模块，加速编译速度（通过上面说的输入输出模块，run的时候不会触发）。之后才会进去入Compiler.compile()的编译环节。
+```
+run(callback) {
+        // 判断是否已经在打包中，如果重复执行报错
+        if (this.running) return callback(new ConcurrentCompilationError());
+        // 初始化一些变量.....
+        this.hooks.beforeRun.callAsync(this, err => {
+            // 如果绑定在beforeRun事件的插件执行错误，会报错
+            if (err) return finalCallback(err);
+            this.hooks.run.callAsync(this, err => {
+                // 如果绑定在run事件的插件执行错误，会报错
+                if (err) return finalCallback(err);
+                this.readRecords(err => {
+                    if (err) return finalCallback(err);
+                    this.compile(onCompiled);
+                });
+            });
+        });
+}
+```
+等Compiler.compile运行结束之后会回调run中名为onCompiled的函数，这个函数的作用就是将编译后的内容生成文件。我们可以看到首先是shouldEmit判断是否编译成功，未成功则结束done，打印相应信息。成功则调用this.emitAssets打包文件。
+```
+const onCompiled = (err, compilation) => {
+    if (err) return finalCallback(err);
+    if (this.hooks.shouldEmit.call(compilation) === false) {
+        const stats = new Stats(compilation);
+        stats.startTime = startTime;
+        stats.endTime = Date.now();
+        this.hooks.done.callAsync(stats, err => {
+            if (err) return finalCallback(err);
+            return finalCallback(null, stats);
+        });
+        return;
+    }
+    this.emitAssets(compilation, err => {
+        if (err) return finalCallback(err);
+        if (compilation.hooks.needAdditionalPass.call()) {
+            compilation.needAdditionalPass = true;
+            const stats = new Stats(compilation);
+            stats.startTime = startTime;
+            stats.endTime = Date.now();
+            this.hooks.done.callAsync(stats, err => {
+                if (err) return finalCallback(err);
+                this.hooks.additionalPass.callAsync(err => {
+                    if (err) return finalCallback(err);
+                    this.compile(onCompiled);
+                });
+            });
+            return;
+        }
+        this.emitRecords(err => {
+            if (err) return finalCallback(err);
+            const stats = new Stats(compilation);
+            stats.startTime = startTime;
+            stats.endTime = Date.now();
+            this.hooks.done.callAsync(stats, err => {
+                if (err) return finalCallback(err);
+                return finalCallback(null, stats);
+            });
+        });
+    });
+};
+```
+#### 5. Compiler.compile
+
+compiler就是编译的意思。那么编译的过程中究竟发生了写什么呢？
+```
+const params = this.newCompilationParams();
+this.hooks.beforeCompile.callAsync(params, err => {
+    ...
+        this.hooks.compile.call(params);
+        const compilation = this.newCompilation(params);
+        this.hooks.make.callAsync(compilation, err => {
+                ...
+                compilation.finish();
+                compilation.seal(err => {
+                    ...        
+                    this.hooks.afterCompile.callAsync(compilation, err => {
+                        ...
+                        //此处是回调函数，这个函数主要用于将编译成功的代码输出
+                        });
+                });
+        });
+});
+```
+首先是定义了params并传入了hooks.compile这个钩子中，params就是模块工厂,这里到调用时继续看
+然后是beforeCompile预备一下（其中会执行我们自定义或者引入在编译执行之前的插件），接着就是启动compile这个钩子。
+这里新建了Compilation，一个很重要的专注于编译的类。
+hooks.make这个钩子就是正式启动编译了（终于到编译了）这里执行结束就代表大部分的工作已经结束了，那它具体干了什么呢？
+到这里我很困惑，他是怎么开始的呢？肯定是前面的某些细节没有注意，废了九牛二虎之力，终于找到了hooks.make的callAsync（callAsync作用是依次触发make的钩子注册的事件，写插件的时候只能注册不能提前触发哦，会影响整个构建的生命周期的）依次触发了什么。
+
+它触发了singleEntryPlugin（单入口文件的处理，如果多入口触发的就是MultiEntryPlugin）里注册的事件。
+
+```
+compiler.hooks.make.tapAsync(
+    "SingleEntryPlugin",
+    (compilation, callback) => {
+        const { entry, name, context } = this;
+        const dep = SingleEntryPlugin.createDependency(entry, name);
+        compilation.addEntry(context, dep, name, callback);
+     }
+);
+```
+而这个事情是什么时机做的呢？就是在这里 ==》 WebpackOptionsApply的294行（填坑完毕）EntryOptionPlugin是处理入口类型的插件，他会webpack.config.js中entry的不同配置帮助我们搭配不同的EntryPlugin。
+通过entry配置进入的一共有3种类型，SingleEntryPlugin，MultiEntryPlugin和DynamicEntryPlugin，根据名字就能够轻易区分他们的类型。一般一个compiler只会触发一个EntryPlugin，然后在这个EntryPlugin中，会有我们构建模块的入口，也就是compilation的入口。
+```
+new EntryOptionPlugin().apply(compiler);
+compiler.hooks.entryOption.call(options.context, options.entry);
+```
+值得注意的是EntryOptionPlugin还帮我们定义了compilation的工程厂类型(这里触发在Complier的newCompilation里)
+```
+compiler.hooks.compilation.tap(
+            "SingleEntryPlugin",
+            (compilation, { normalModuleFactory }) => {
+                compilation.dependencyFactories.set(
+                    SingleEntryDependency,
+                    normalModuleFactory
+                );
+            }
+);
+```
+这里我们来张图片看下webpack之间错综复杂的情感大戏关联
+![link](/img/link.png)
+
+
+这里大概可以得知webpack的模块构建其实是通过entry（config里配置的那个），也就是入口文件开始分析，开始构建。也就是说一个入口文件会触发一次Compliation.addEntry，然后触发之后就是Compilation开始构建模块了。
+```
+compiler.hooks.make.tapAsync(
+            "SingleEntryPlugin",
+            (compilation, callback) => {
+                const { entry, name, context } = this;
+                console.log(entry, name, context)
+                const dep = SingleEntryPlugin.createDependency(entry, name);
+                compilation.addEntry(context, dep, name, callback);
+            }
+);
+```
+#### 6. 编译流程Compilation
+Compilation是这么个东西....
+![Compilation](/img/Compilation.png)
+          
+首先看下addEntry
+```
+addEntry(context, entry, name, callback) {
+        // .....
+        this._addModuleChain(
+            context,
+            entry,
+            module => {
+                this.entries.push(module);
+            },
+            (err, module) => {
+                if (err) {
+                    return callback(err);
+                }
+
+                if (module) {
+                    slot.module = module;
+                } else {
+                    const idx = this._preparedEntrypoints.indexOf(slot);
+                    if (idx >= 0) {
+                        this._preparedEntrypoints.splice(idx, 1);
+                    }
+                }
+                return callback(null, module);
+            }
+        );
+    }
+```
+添加模块的依赖_addModuleChain，它的作用是一是根据模块的类型获取对应的模块工厂并创建模块，二是构建模块。
+```
+const moduleFactory = this.dependencyFactories.get(Dep); 
+// 这句话就拿到了我们之前选择的工程模块 ==》normalModuleFactory 
+// dependencyFactories包含了所有的依赖集合
+```
+
+接下来就是调用moduleFactory.create，它的作用就是调用工厂的方法生产模块，这里的流程就是构建语法树的过程，同时调用了buildModule的钩子（我们的插件用的）（这里先不多说）。
+
+单独看create干了什么呢？
+
+- 触发 beforeResolve 事件：这里 beforeResolve 事件中没有做任务处理，直接进入回调函数
+- 触发 NormalModuleFactory 中的 factory 事件。在 NormalModuleFactory 的 constructor 中有一段注册 factory 事件的逻辑。
+- 执行 factory 方法（具体代码位于 NormalModuleFactory 的 constructor 中），主要流程如下：      
+![NormalModuleFactory](/img/NormalModuleFactory.png)
+
+1.resolver 阶段：得到路径信息以及涉及到的 loader 和 loader 的路径。这一步完成后，生成 module 的准备工作已经完成。
+
+```
+this.hooks.resolver.tap("NormalModuleFactory", () => (data, callback) => {
+    //data 是上面create传入的
+    //...
+    const loaderResolver = this.getResolver("loader");
+    const normalResolver = this.getResolver("normal", data.resolveOptions);
+}
+```
+2.resolver执行结束后，会得到一个data,  dependencies就是依赖进入createModule 阶段：生成一个 module 实例，将上一步的数据存入实例中。
+
+```
+// data
+[ CommonJsRequireDependency {
+    module: null,
+    weak: false,
+    optional: false,
+    loc: SourceLocation { start: [Position], end: [Position] },
+    request: './../webpack/buildin/module.js',
+    userRequest: 'module',
+    range: [ 8, 40 ] } ]
+
+resolver(result, (err, data) => {
+    if (err) return callback(err);
+    // Ignored
+    this.hooks.afterResolve.callAsync(data, (err, result) => {
+        if (err) return callback(err);
+
+        // Ignored
+        if (!result) return callback();
+        let createdModule = this.hooks.createModule.call(result);
+        if (!createdModule) {
+            if (!result.request) {
+                return callback(new Error("Empty dependency (no request)"));
+            }
+
+            createdModule = new NormalModule(result);
+        }
+
+        createdModule = this.hooks.module.call(createdModule, result);
+
+        return callback(null, createdModule);
+    });
+});
+```
+
+3.构建结束阶段 调用了Compilation.finish
+
+这里finish干了几件事，一件就是出发了结束构建的钩子，然后就是收集了每个模块构建时产生的问题，最后就是通过templat模板，重新聚合到一块，然后回调complier的模块生成文件（就是上面说的优化后的输入输出文件的那个！有用了！！）。
+之后调用seal,输出文件，这里做了很多优化的hook（一堆插件，太多了，不看了🙈）果然webpack就是事件流和插件的聚合！
+
+4.模块工厂—moduleFactory
+
+嗯，没错又要跳回到compiler，还记得beforeCompile里的parms吗？没错就是newCompilationParams里的，实际上我们有三种类型，emmm，我只看了normal类型的（可以自己了解下其他的，然后给我讲讲可好😭）
+
+              
+            
+他是干啥的？
+
+就是构建模块的！工厂类里有有两个参数很重要一个是通过NormalModule创建的实例，也就是模块，还有就是RuleSet，它就是loaders，其中包括自带的loader和自定义的loader。
+
+也就是说Factory干了两件事，第一件是匹配了相对应的parser，将parser配置成了专门用于当前模块的解析器将源码解析成AST模式，第二件是创建generator用于生成代码也就是还原AST（这一块是模版生成的时候会用到），第三件是创建模块，构建模块的时候给他找到相映的loader，替换源码，添加相映的依赖模块，然后在模块解析的时候提供相应的parser解析器，在生成模版的时候提供相应的generator。
+
+5.normalModule类
+
+Fatory提供了原料（options）和工具（parser），就等于将参数输给了自动化的机器，这个normalModule就是创造的机器，由他来build模块，并将源码变为AST语法树。
+
+```
+build(options, compilation, resolver, fs, callback) {
+    //...
+        return this.doBuild(options, compilation, resolver, fs, err => {
+            //...
+                this._cachedSources.clear();
+                //...
+                try {
+                        const result = this.parser.parse(//重点在这里。
+                                //....
+                        );
+                    //...
+
+        });
+}
+```
+
+在Compilation中模块创建好之后，开始触发module的build方法，开始生成模块，他的逻辑很简单，就是输入source源文件，然后通过reslover解析文件loader和依赖的文件，并返回结果。然后通过loader将此转化为标准的webpack模块，存储source，等待生成模版的时候备用。
+等到需要打包的时候，就将编译过的源码在重组成JS代码，主要通过Facotry给模块配备的generator。
+
+6.loader和plugin的区别是什么呢
+
+区别1: plugin可以在任何一个流程节点出现，loader有特定的活动范围
+区别2: plugin可以做和源码无关的事，比如监控，loader只能解析源码变成标准模块。
+
+那loader是怎么进入module的呢？
+
+首先是Compilation._addModuleChain开始添加模块时
+
+```
+// createdModule阶段之后会回到moduleFactory.create的callback里
+const addModuleResult = this.addModule(module);
+// addModule 会执行 this._modules.set(identifier, module);和 this.modules.push(module);
+//其中 identifier 对于 normalModule 来说就是 module.request，即文件的绝对路径
+// 对于入口文件来说，这里会执行 this.entries.push(module);
+ onModule(module);
+//....
+if (addModuleResult.build) {
+    this.buildModule(module, false, null, null, err => {
+        if (err) {
+            this.semaphore.release();
+            return errorAndCallback(err);
+        }
+
+        if (currentProfile) {
+            const afterBuilding = Date.now();
+            currentProfile.building = afterBuilding - afterFactory;
+        }
+
+        this.semaphore.release();
+        afterBuild();
+    });
+} 
+```
+
+这个阶段可以认为是 add 阶段，将 module 的所有信息保存到 Compilation 中，以便于在最后打包成 chunk 的时候使用。随后在这个回调函数中，会调用 this.buildModule 进入 build 阶段。
+
+this.buildModule这个方法，然后调用了NormalModule.build，开始创建模块了。
+
+7.NormalModule.build 方法。build 方法主逻辑如下：
+```
+// NormalModule.build 方法
+build(options, compilation, resolver, fs, callback) {
+  //...
+  return this.doBuild(options, compilation, resolver, fs, err => {
+    //...
+    try {
+       // 这里会将 source 转为 AST，分析出所有的依赖
+                const result = this.parser.parse(/*参数*/);
+                if (result !== undefined) {
+                        // parse is sync
+                        handleParseResult(result);
+                }
+        } catch (e) {
+                handleParseError(e);
+        }
+  })
+}
+// NormalModule.doBuild 方法
+doBuild(options, compilation, resolver, fs, callback) {
+        //...
+        // 执行各种 loader
+        runLoaders(
+                {
+                        resource: this.resource,
+                        loaders: this.loaders,
+                        context: loaderContext,
+                        readResource: fs.readFile.bind(fs)
+                },
+                (err, result) => {
+                        //...
+                        // createSource 会将 runLoader 得到的结果转为字符串以便后续处理
+                        this._source = this.createSource(
+                                this.binary ? asBuffer(source) : asString(source),
+                                resourceBuffer,
+                                sourceMap
+                        );
+                        //...
+                }
+        );
+}
+```
+
+创建模块之时，会调用runLoaders去执行loaders，但是对于loader所在的位置，程序还是迷茫的，所以这个时候需要请求NormalModuleFactory.resolveRequestArray，帮我们读取loader所在的地址，执行并返回。就这样一个个模块生成，一个个loader生成，直到最后一个模块创建完毕，然后就到了Compilation.seal的流程了。
+
+等到当前模块处理完loaders之后，将导入模块变成标准的JS模块之后，就要开始分解源码了，让它变成标准的AST语法树，这个时候就要依靠Parser。Parser很强大，他帮助我们将不规范的内容转化为标准的模块，方便打包活着其他操作。Parser相当于一个机器，源文件进入，然后处理，然后输出。
+
+javascript类型的Parser一共有3个类型，"auto"、"script"和"module"，根据模块的需求，Factoy帮我们匹配不同类型的Parser。
+```
+normalModuleFactory.hooks.createParser.for("javascript/auto").tap("JavascriptModulesPlugin", options => {
+        return new Parser(options, "auto");
+});
+normalModuleFactory.hooks.createParser.for("javascript/dynamic").tap("JavascriptModulesPlugin", options => {
+        return new Parser(options, "script");
+});
+normalModuleFactory.hooks.createParser.for("javascript/esm").tap("JavascriptModulesPlugin", options => {
+        return new Parser(options, "module");
+});
+```
+Parser是怎么解析我们的源码的呢？
+
+首先先变成一个AST——标准的语法树，结构化的代码，方便后期解析，如果传入的source不是ast，也会被强制ast再进行处理。
+这个解析库，webpack用的是acorn。
+
+8.Template（这部分只是了解了一下原理，具体源码还没有深入了解）
+
+Template是在compilation.seal的时候触发的们也就是模块构建完成之后。我们要将好不容易构建完成的模块再次重组成js代码，也就是我们在bundle中见到的代码。
+我们打包出来的js，总是用着相同的套路？这是为什么？很明显有个标准的模版。等到我们的源文件变成ast之后，准备输出的处理需要依靠Template操作如何输出，以及webpack-source帮助我们合并替换还是ast格式的模块。最后按照chunk合并一起输出。
+Template的类一共有5个：
+
+- Template.js
+- MainTemplate.js
+- ModuleTemplate.js
+- RuntimeTemplate
+- ChunkTemplate.js
+
+当然！模版替换是在Compilation中执行的，毕竟Compilation就像一个指挥者，指挥者大家如何按顺序一个个编译。
+
+Compilation.seal触发了MainTemplate.getRenderManifest，获取需要渲染的信息，接着通过中的钩子触发了mainTemplate.hooks.renderManifest这个钩子，调用了JavascriptModulePlugin中相应的函数，创建了一个含有打包信息的fileManifest返回备用。
+```
+result.push({
+        render: () =>
+                compilation.mainTemplate.render(
+                        hash,
+                        chunk,
+                        moduleTemplates.javascript,
+                        dependencyTemplates
+                ),
+        filenameTemplate,
+        pathOptions: {
+                noChunkHash: !useChunkHash,
+                contentHashType: "javascript",
+                chunk
+        },
+        identifier: `chunk${chunk.id}`,
+        hash: useChunkHash ? chunk.hash : fullHash
+});
+createChunkAssets(){
+    //...
+    const manifest = template.getRenderManifest(...)//获取渲染列表
+    //...
+    for (const fileManifest of manifest) {
+        //...
+        source = fileManifest.render();
+        //...
+    }
+    //...
+}
+```
+
+准备工作做完之后就要开始渲染了，调用了fileManifest的render函数，其实就是mainTemplate.render。mainTemplate.render触发了hooks.render这个钩子，返回了一个ConcatSource的资源。其中有固定的模板，也有调用的模块。
+
+各个模块的模板替换MainTemplate将任务分配给了Template，让他去处理模块们的问题，于是调用了Template.renderChunkModules这个方法。这个方法首先是获取所有模块的替换资源。
+
+然后ModuleTemplate再去请求NormalModule.source这个方法。这里的module便使用了Factory给他配备的generator，生成了替换代码，generate阶段的时候会请求RuntimeTemplate，根据名字可以得知，是用于替换成运行时的代码。
+
+然后丢入NormalModule将此变为cachedSource，返回给ModuleTemplate进一步处理。ModuleTemplate在对这个模块进行打包，最后出来的效果是这样的：
+
+![ModuleTemplate](/img/ModuleTemplate.png)
+
+
+革命尚未结束！替换仍在进行！我们回到Template.renderChunkModules，继续替换。
+```
+static renderChunkModules(chunk,filterFn,moduleTemplate,dependencyTemplates,prefix = ""){
+        const source = new ConcatSource();
+        const modules = chunk.getModules().filter(filterFn);
+        //...如果没有模块，则返回"[]"
+                source.add("[]");
+                return source;
+        //...如果有模块则获取所有模块
+        const allModules = modules.map(//...);
+        //...开始添加模块
+                source.add("[\n");
+        //...
+            source.add(`/* ${idx} */`);
+                source.add("\n");
+                source.add(module.source);
+                source.add("\n" + prefix + "]");
+        //...
+        return source;
+}
+
+```
+
+![concatSource](/img/concatSource.png)
+
+我们将ConcatSource返回至MainTemplate.render()，再加个;，然后组合返回至Compliation.createChunkAssets。
+
+到此seal中template就告一段落啦。至于生成文件，那就是通过webpack-source这个包，将我们的数组变成字符串然后拼接，最后输出。
+
+#### 7. 我们来实现一个小webpack demo
+
+[webpack demo](https://github.com/justyouhappy/my-webpack)
+
+
+### 后记
+整体流程下来，其实我们就可以明白，webpack是一个由事件流构成的工具，插件会在打包的各个事件流中触发，并可以对当前事件流里对每个chunk(每个chunk为一个模块，也就是一个文件)进行处理，loader则是对当前loader对应的特定文件类型（css|scss|js|ts）的chunk后解析的语法树进行处理，生成我们想要的低级语法，最后通过模板输出成打包后的js文件。
