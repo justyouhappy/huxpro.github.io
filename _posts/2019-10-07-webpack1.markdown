@@ -37,18 +37,22 @@ npm install webpack
 #### 二、全局安装和本地安装的区别
  
 1.安装方式不同
+
 2.安装的目录不同：
 
 （1）本地安装会将webpack，下载到当前目录的node_modules文件中，并在.bin生成相应的软链文件指向webpack目录中的bin文件中的webpakc.js文件。
+
 （2）全局安装会将webpack，安装到全局的node的根路径中的node_modules中，并在node的根目录中的bin文件中生成一个软链并指向node_modules下的webpack目录中的bin文件中的webpakc.js文件。
 
 3.执行方式不同：
+
 （1）当本地安装是，需要在package.josn中设置script中设置npm脚本进行调用。
+
 （2）而全局安装的，则是直接命令行工具中执行webpack命令即可
 
 #### 三、执行方式详解
 
-1. 本地安装的webpack执行
+1.本地安装的webpack执行
 
 （1）本地安装的webpack是通过设置npm脚本去执行node_modules目录中，.bin目录的脚本。那npm脚本指的又是什么呢？
 
@@ -61,7 +65,6 @@ npm install webpack
     }
 }
 ```
-
  （3）script的每一个属性对应一个脚本，比如start对应的就是node start.js，当我们使用 npm run命令时，就相当于执行 
 node start.js
 ```
@@ -69,14 +72,13 @@ npm run start
 等同于
 node start.js
 ```
-
  (4) 所以执行start.js时，发现里面有命令webpack，node就会优先在当前目录下node_modules目录中的.bin中寻找相应的脚本执行，若未发现此脚本，则相当于在命令行直接输入命令webpack。
 
-2. 全局安装的webpack执行
+2.全局安装的webpack执行
 
 全局安装的webpack会在安装时声明一个全局的环境变量webpack，这个变量会指向node的根目录下的bin文件的webpack脚本中,当执行webpack命令时，会直接执行bin目录下的webpack脚本 ==> 等同于执行全局node_modules下的bin目录下的webpack.js
 
-3. 同时安装全局版本和本地版本的webpack执行
+3.同时安装全局版本和本地版本的webpack执行
 
 在4.0版本中当在命令行直接执行webpack时，默认执行的是全局webpack。在npm脚本执行webpack命令则会执行本地版本的webpack。
 
@@ -154,8 +156,7 @@ console.log(path.resolve(
 
 #### 二、当webpack检测到未安装此包会做什么处理呢？
 
-1. 拼接提示，并且输出。
-
+1.拼接提示，并且输出。
 ```
 let notify = "One CLI for webpack must be installed. These are recommended choices, delivered as separate packages:”;
 
@@ -167,8 +168,7 @@ for (const item of CLIs) {
 console.error(notify);
 ```
 
-2. 根据你当前的环境来判断，使用的是npm 还是yarn安装的webpack，然后新建一个question进程。
-
+2.根据你当前的环境来判断，使用的是npm 还是yarn安装的webpack，然后新建一个question进程。
 ```
 const isYarn = fs.existsSync(path.resolve(process.cwd(), "yarn.lock"));
 const packageManager = isYarn ? "yarn" : "npm";
@@ -181,8 +181,7 @@ const questionInterface = readLine.createInterface({
 });
 ```
 
-3. 根据你的选择，做相应的处理
-
+3.根据你的选择，做相应的处理
 ```
 //未输入答案 停止进程
 if (!normalizedAnswer) {
@@ -250,7 +249,7 @@ runCommand(packageManager, installOptions.concat(packageName))
 
 #### 一、执行前准备
 
-1. 判断webpack-cli是项目级别的还是本地级别，优先执行本地，主要是通过importLocal来实现的
+1.判断webpack-cli是项目级别的还是本地级别，优先执行本地，主要是通过importLocal来实现的
 ```
 const importLocal = require("import-local");
 // Prefer the local installation of webpack-cli
@@ -259,7 +258,7 @@ if (importLocal(__filename)) {
 }
 ```
 
-2. 判断需要通过下载对应loader才能使用的命令，这部分和webpack打包的关系不大，主要是webpack-cli这个脚手架本身的功能，大致有下面的集合。
+2.判断需要通过下载对应loader才能使用的命令，这部分和webpack打包的关系不大，主要是webpack-cli这个脚手架本身的功能，大致有下面的集合。
 ```
 const NON_COMPILATION_ARGS = [
    "init",
@@ -277,7 +276,7 @@ const NON_COMPILATION_ARGS = [
 ];
 ```
 
-3. 利用yargs来处理命令，将常规的-h,-v这类命令进行处理（和webpack配置无关的命令）
+3.利用yargs来处理命令，将常规的-h,-v这类命令进行处理（和webpack配置无关的命令）
 ```
 module.exports = function(yargs) {
    yargs
@@ -294,7 +293,7 @@ module.exports = function(yargs) {
 
 #### 二、执行打包相关命令
 
-1. 预处理命令行，加上必须配置的命令。
+1.预处理命令行，加上必须配置的命令。
 ```
 //-d 在webpack的命令行里等同于 --debug --devtool cheap-module-eval-source-map --output-pathinfo 
 if (argv.d) { 
@@ -332,7 +331,7 @@ if (argv.output) {
 }
 ```
 
-2. 读取我们的配置问题，合并出整体的webpack config传入webpack打包，如果没有声明配置文件路径，这里是通过生成一个遍历的文件列表取出真正的配置文件列表（没错是列表，webpack支持多配置文件）。
+2.读取我们的配置问题，合并出整体的webpack config传入webpack打包，如果没有声明配置文件路径，这里是通过生成一个遍历的文件列表取出真正的配置文件列表（没错是列表，webpack支持多配置文件）。
 ```
 [ { path: '/Users/alan/Desktop/demo/webpack.config.js',
     ext: '.js' },
@@ -439,7 +438,7 @@ if (argv.output) {
     ext: '.coffee.md' } ]
 ```
 
-3. 每一种类型的文件(除.js)都有一种需要引入loader，这里webpack-cli需要引入解析器，来将文件内容转换成js能理解的模式(配置文件用js写会省事好多)，逻辑如下。
+3.每一种类型的文件(除.js)都有一种需要引入loader，这里webpack-cli需要引入解析器，来将文件内容转换成js能理解的模式(配置文件用js写会省事好多)，逻辑如下。
 ```
 if (configFiles.length > 0) { 
        // 声明函数registerCompiler
@@ -510,12 +509,12 @@ if (configFiles.length > 0) {
    }
 ```
 
-4. 然后会对读出来的配置做一个格式检验，如果不通过则报错（通过预先写好的规则文件，调用webpack整体的格式错误检测模块）
+4.然后会对读出来的配置做一个格式检验，如果不通过则报错（通过预先写好的规则文件，调用webpack整体的格式错误检测模块）
 const WebpackOptionsValidationError = require("webpack") .WebpackOptionsValidationError;
 
-5. 对配置做预处理，我们使用webpack的人，应该会了解webpack是可以通过命令行，去增加一些配置的，以及有些需要通过命令行来配置的默认项（webpack内置的配置不包含的，webpack里也会对一些默认项的配置，而这些是不需要暴露到命令行里去配置的）这里的逻辑不再多说（很啰嗦的一套逻辑....）。
+5.对配置做预处理，我们使用webpack的人，应该会了解webpack是可以通过命令行，去增加一些配置的，以及有些需要通过命令行来配置的默认项（webpack内置的配置不包含的，webpack里也会对一些默认项的配置，而这些是不需要暴露到命令行里去配置的）这里的逻辑不再多说（很啰嗦的一套逻辑....）。
 
-6. 输出配置，将处理后的多配置或者单配置送到webpack进行处理
+6.输出配置，将处理后的多配置或者单配置送到webpack进行处理
 compiler = webpack(options); 
 
 #### 三、小结
